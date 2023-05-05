@@ -56,6 +56,9 @@ int main(int argc, char *argv[]) {
         printf("Usage: %s port\n", argv[0]);
         return 1;
     }
+    
+    LOG("Starting coin-server version %.1f...\n", 1.0);
+    LOG("%s", "(c) 2023 CS 521 Students\n");
 
     int port = atoi(argv[1]);
 
