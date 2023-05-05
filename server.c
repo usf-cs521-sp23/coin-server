@@ -1,3 +1,5 @@
+#include "server.h"
+
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <inttypes.h>
@@ -12,6 +14,7 @@
 #include <pthread.h>
 
 #include "common.h"
+#include "logger.h"
 
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
@@ -57,7 +60,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     
-    LOG("Starting coin-server version %.1f...\n", 1.0);
+    LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
 
     int port = atoi(argv[1]);

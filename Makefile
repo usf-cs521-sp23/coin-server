@@ -1,14 +1,26 @@
-all: client server
+# Output binary name
+bin=coin-server
 
-CFLAGS += -Wall -g
+# Set the following to '0' to disable log messages:
+LOGGER ?= 1
+VERSION = 1.0
 
-client: client.c common.h common.o
-	$(CC) $(LDFLAGS) $(CFLAGS) client.c common.o -o client
+# Compiler/linker flags
+CFLAGS += -g -Wall -DLOGGER=$(LOGGER) -DVERSION=$(VERSION)
+LDLIBS +=
+LDFLAGS +=
 
-server: server.c common.h common.o
-	$(CC) $(LDFLAGS) $(CFLAGS) server.c common.o -o server
+src=server.c common.c
+obj=$(src:.c=.o)
 
-common.o: common.c common.h
+all: $(bin)
+
+$(bin): $(obj)
+	$(CC) $(CFLAGS) $(LDLIBS) $(LDFLAGS) $(obj) -o $@
+
+server.o: server.h server.c common.o logger.h
+common.o: common.h logger.h
 
 clean:
-	rm -rf client server common.o
+	rm -f $(bin) $(obj) vgcore.*
+

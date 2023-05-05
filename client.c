@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "logger.h"
 
 int main(int argc, char *argv[]) {
 
