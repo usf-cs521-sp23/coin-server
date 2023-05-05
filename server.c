@@ -14,7 +14,7 @@
 #include "common.h"
 
 void *client_thread(void* client_fd) {
-    int fd = (int) client_fd;
+    int fd = (int) (long) client_fd;
     while (true) {
 //        struct msg_header header;
 //        read_len(fd, &header, sizeof(struct msg_header));
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
         LOG("Accepted connection from %s:%d\n", remote_host, client_addr.sin_port);
 
         pthread_t thread;
-        pthread_create(&thread, NULL, client_thread, (void *) client_fd);
+        pthread_create(&thread, NULL, client_thread, (void *) (long) client_fd);
     }
 
     return 0; 
