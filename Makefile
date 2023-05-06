@@ -10,7 +10,7 @@ CFLAGS += -g -Wall -DLOGGER=$(LOGGER) -DVERSION=$(VERSION)
 LDLIBS +=
 LDFLAGS +=
 
-src=server.c common.c
+src=server.c common.c task.c
 obj=$(src:.c=.o)
 
 all: $(bin)
@@ -20,6 +20,7 @@ $(bin): $(obj)
 
 server.o: server.h server.c common.o logger.h
 common.o: common.h logger.h
+task.o: task.h task.c logger.h
 
 clean:
 	rm -f $(bin) $(obj) vgcore.*
