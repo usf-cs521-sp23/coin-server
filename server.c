@@ -15,6 +15,9 @@
 
 #include "common.h"
 #include "logger.h"
+#include "task.h"
+
+static char current_task[MAX_TASK_LEN];
 
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
@@ -62,6 +65,11 @@ int main(int argc, char *argv[]) {
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
+    
+    task_init();
+    
+    task_generate(current_task);
+    LOG("Current task: %s\n", current_task);
 
     int port = atoi(argv[1]);
 
