@@ -125,6 +125,7 @@ int main(int argc, char *argv[]) {
 
         pthread_t thread;
         pthread_create(&thread, NULL, client_thread, (void *) (long) client_fd);
+        pthread_detach(thread);
     }
 
     return 0; 
