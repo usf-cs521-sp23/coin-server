@@ -38,7 +38,11 @@ size_t adj_sz = 0;
 size_t ani_sz = 0;
 /** [05/07/23 InhwaS] ---------- end ---------- */
 
-void task_init()
+/**
+ * Seeds the random number generator and then sets up task generation data
+ * structures by shuffling task components.
+ */
+void task_init(int seed)
 {
     /** [05/07/23 InhwaS] ---------- start ---------- */
     ani_sz = read_file("animals", &animals);
@@ -48,8 +52,12 @@ void task_init()
     LOG("finished reading adjectives. adjective array size [%zu]\n", adj_sz);
     
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
-    srand(time(NULL));
-    /** [05/07/23 InhwaS] ---------- end ---------- */
+
+    if (seed == 0) {
+        seed = time(NULL);
+    }
+    LOG("Random seed: %d\n", seed);
+    srand(seed);
 
     size_t max_ani_len = 0;
     for (int i = 0; i < ani_sz; ++i)
@@ -72,7 +80,7 @@ void task_init()
     LOG("Longest adjective length: %zu\n", max_adj_len);
 
     size_t longest_task_len = max_ani_len + max_adj_len + 1;
-    assert(longest_task_len < MAX_TASK_LEN);
+    assert(longest_task_len < MAX_BLOCK_LEN);
     
     LOGP("Shuffling animals.\n");
     fisher_yates(animals, ani_sz);
@@ -83,7 +91,7 @@ void task_init()
     LOGP("Task generator ready.\n");
 }
 
-void task_generate(char buf[MAX_TASK_LEN])
+void task_generate(char buf[MAX_BLOCK_LEN])
 {
     sprintf(buf, "%s %s", adjectives[adj_idx++], animals[ani_idx++]);
     

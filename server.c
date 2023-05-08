@@ -16,8 +16,70 @@
 #include "common.h"
 #include "logger.h"
 #include "task.h"
+#include "sha1.h"
 
-static char current_task[MAX_TASK_LEN];
+static char current_block[MAX_BLOCK_LEN];
+static uint32_t current_difficulty = 0x0000FFF;
+
+void handle_request_task(int fd, struct msg_request_task *req)
+{
+    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty);
+    union msg_wrapper wrapper = create_msg(MSG_TASK);
+    struct msg_task *task = &wrapper.task;
+    strcpy(task->block, current_block);
+    task->difficulty = current_difficulty;
+
+    write_msg(fd, &wrapper);
+}
+
+bool verify_solution(struct msg_solution *solution)
+{
+    uint8_t digest[SHA1_HASH_SIZE];
+    const char *check_format = "%s%lu";
+    ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
+    char *buf = malloc(buf_sz);
+    snprintf(buf, buf_sz, check_format, current_block, solution->nonce);
+    sha1sum(digest, (uint8_t *) buf, buf_sz);
+    free(buf);
+
+    /* Get the first 32 bits of the hash */
+    uint32_t hash_front = 0;
+    hash_front |= digest[0] << 24;
+    hash_front |= digest[1] << 16;
+    hash_front |= digest[2] << 8;
+    hash_front |= digest[3];
+
+    /* Check to see if we've found a solution to our block */
+    return (hash_front & current_difficulty) == hash_front;
+}
+
+void handle_solution(int fd, struct msg_solution *solution)
+{
+    LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
+    
+    union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
+    struct msg_verification *verification = &wrapper.verification;
+    verification->ok = false; // assume the solution is not valid by default
+
+    /* We could directly verify the solution, but let's make sure it's the same
+     * block and difficulty first: */
+    if (strcmp(current_block, solution->block) != 0)
+    {
+        strcpy(verification->error_description, "Block does not match current block on server");
+        write_msg(fd, &wrapper);
+        return;
+    }
+    
+    if (current_difficulty !=  solution->difficulty) {
+        strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
+        write_msg(fd, &wrapper);
+        return;
+    }
+
+    verification->ok = verify_solution(solution);
+    strcpy(verification->error_description, "Verified SHA-1 hash");
+    write_msg(fd, &wrapper);
+}
 
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
@@ -28,18 +90,14 @@ void *client_thread(void* client_fd) {
 //        void *sol_ptr = (char *) &solution + sizeof(struct msg_header);
 //        read_len(fd, sol_ptr, header.msg_len - sizeof(struct msg_header));
         union msg_wrapper msg = read_msg(fd);
-        if (msg.header.msg_type == MSG_SOLUTION) {
-            printf("-> %s , nonce: %lu\n", msg.solution.username, msg.solution.nonce);
-            
-            // verify solution
-
-            // tell the client it was ok / not ok
+        switch (msg.header.msg_type) {
+            case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
+                                   break;
+            case MSG_SOLUTION: handle_solution(fd, (struct msg_solution *) &msg.solution);
+                               break;
+            default:
+                LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
-         if (msg.header.msg_type == MSG_TASK) {
-            // give them a task
-
-            //etc
-         }
     }
     
     /* Server checklist:
@@ -58,18 +116,26 @@ void *client_thread(void* client_fd) {
 
 int main(int argc, char *argv[]) {
 
-    if (argc != 2) {
-        printf("Usage: %s port\n", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s port [seed]\n", argv[0]);
         return 1;
+    }
+    
+    int seed = 0;
+    if (argc == 3) {
+        char *end;
+        seed = strtol(argv[2], &end, 10);
+        if (end == argv[2]) {
+            fprintf(stderr, "Invalid seed: %s\n", argv[2]);
+        }
     }
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
     
-    task_init();
-    
-    task_generate(current_task);
-    LOG("Current task: %s\n", current_task);
+    task_init(seed);
+    task_generate(current_block);
+    LOG("Current block: %s\n", current_block);
 
     int port = atoi(argv[1]);
 
