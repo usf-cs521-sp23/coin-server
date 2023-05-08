@@ -16,6 +16,7 @@
 #include "common.h"
 #include "logger.h"
 #include "task.h"
+#include "sha1.h"
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
@@ -31,6 +32,27 @@ void handle_request_task(int fd, struct msg_request_task *req)
     write_msg(fd, &wrapper);
 }
 
+bool verify_solution(struct msg_solution *solution)
+{
+    uint8_t digest[SHA1_HASH_SIZE];
+    const char *check_format = "%s%lu";
+    ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
+    char *buf = malloc(buf_sz);
+    snprintf(buf, buf_sz, check_format, current_block, solution->nonce);
+    sha1sum(digest, (uint8_t *) buf, buf_sz);
+    free(buf);
+
+    /* Get the first 32 bits of the hash */
+    uint32_t hash_front = 0;
+    hash_front |= digest[0] << 24;
+    hash_front |= digest[1] << 16;
+    hash_front |= digest[2] << 8;
+    hash_front |= digest[3];
+
+    /* Check to see if we've found a solution to our block */
+    return (hash_front & current_difficulty) == hash_front;
+}
+
 void handle_solution(int fd, struct msg_solution *solution)
 {
     LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
@@ -39,6 +61,8 @@ void handle_solution(int fd, struct msg_solution *solution)
     struct msg_verification *verification = &wrapper.verification;
     verification->ok = false; // assume the solution is not valid by default
 
+    /* We could directly verify the solution, but let's make sure it's the same
+     * block and difficulty first: */
     if (strcmp(current_block, solution->block) != 0)
     {
         strcpy(verification->error_description, "Block does not match current block on server");
@@ -51,7 +75,10 @@ void handle_solution(int fd, struct msg_solution *solution)
         write_msg(fd, &wrapper);
         return;
     }
-    
+
+    verification->ok = verify_solution(solution);
+    strcpy(verification->error_description, "Verified SHA-1 hash");
+    write_msg(fd, &wrapper);
 }
 
 void *client_thread(void* client_fd) {
