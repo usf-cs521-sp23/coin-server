@@ -133,8 +133,4 @@ size_t read_file(char filename[], char ***array){
     fclose(file_again);   
     return i;
 }
-
-int main(void){
-    task_init();
-}
 /** [05/07/23 InhwaS] ---------- end ---------- */
