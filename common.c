@@ -99,7 +99,7 @@ int write_msg(int fd, const union msg_wrapper *msg)
 
 union msg_wrapper create_msg(enum MSG_TYPES type)
 {
-  union msg_wrapper wrapper;
+  union msg_wrapper wrapper = { 0 };
   wrapper.header.msg_type = type;
   wrapper.header.msg_len = msg_size(type);
   return wrapper;
