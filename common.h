@@ -18,6 +18,11 @@ struct __attribute__((__packed__)) msg_header {
     uint16_t msg_type;
 };
 
+struct __attribute__((__packed__)) msg_request_task {
+    struct msg_header header;
+    char username[20];
+};
+
 struct __attribute__((__packed__)) msg_task {
         struct msg_header header;
         char block[MAX_BLOCK_LEN];
@@ -32,19 +37,28 @@ struct __attribute__((__packed__)) msg_solution {
         uint64_t nonce;
 };
 
+struct __attribute__((__packed__)) msg_verification {
+        struct msg_header header;
+        bool ok;
+        char error_description[128];
+};
+
 union __attribute__((__packed__)) msg_wrapper {
         struct msg_header header;
+        struct msg_request_task request_task;
         struct msg_task task;
         struct msg_solution solution;
+        struct msg_verification verification;
 };
 
 enum MSG_TYPES {
+        MSG_REQUEST_TASK,
+        MSG_TASK,
         MSG_SOLUTION,
         MSG_VERIFICATION,
         MSG_HEARTBEAT,
         MSG_STATUS,
         MSG_ID,
-        MSG_TASK,
 };
 
 size_t msg_size(enum MSG_TYPES type);

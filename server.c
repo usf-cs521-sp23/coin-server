@@ -20,6 +20,40 @@
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
 
+void handle_request_task(int fd, struct msg_request_task *req)
+{
+    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty);
+    union msg_wrapper wrapper = create_msg(MSG_TASK);
+    struct msg_task *task = &wrapper.task;
+    strcpy(task->block, current_block);
+    task->difficulty = current_difficulty;
+
+    write_msg(fd, &wrapper);
+}
+
+void handle_solution(int fd, struct msg_solution *solution)
+{
+    LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
+    
+    union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
+    struct msg_verification *verification = &wrapper.verification;
+    verification->ok = false; // assume the solution is not valid by default
+
+    if (strcmp(current_block, solution->block) != 0)
+    {
+        strcpy(verification->error_description, "Block does not match current block on server");
+        write_msg(fd, &wrapper);
+        return;
+    }
+    
+    if (current_difficulty !=  solution->difficulty) {
+        strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
+        write_msg(fd, &wrapper);
+        return;
+    }
+    
+}
+
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
     while (true) {
@@ -29,18 +63,14 @@ void *client_thread(void* client_fd) {
 //        void *sol_ptr = (char *) &solution + sizeof(struct msg_header);
 //        read_len(fd, sol_ptr, header.msg_len - sizeof(struct msg_header));
         union msg_wrapper msg = read_msg(fd);
-        if (msg.header.msg_type == MSG_SOLUTION) {
-            printf("-> %s , nonce: %lu\n", msg.solution.username, msg.solution.nonce);
-            
-            // verify solution
-
-            // tell the client it was ok / not ok
+        switch (msg.header.msg_type) {
+            case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
+                                   break;
+            case MSG_SOLUTION: handle_solution(fd, (struct msg_solution *) &msg.solution);
+                               break;
+            default:
+                LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
-         if (msg.header.msg_type == MSG_TASK) {
-            // give them a task
-
-            //etc
-         }
     }
     
     /* Server checklist:

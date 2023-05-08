@@ -2,6 +2,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <stdbool.h>
+#include <assert.h>
+
 int read_len(int fd, void *buf, size_t length)
 {
   size_t total = 0;
@@ -62,8 +65,11 @@ int write_len(const int fd, const void *buf, size_t length)
 size_t msg_size(enum MSG_TYPES type)
 {
         switch (type) {
-                case MSG_SOLUTION: return sizeof(struct msg_solution);
-                default: return -1;
+            case MSG_REQUEST_TASK: return sizeof(struct msg_request_task);
+            case MSG_TASK: return sizeof(struct msg_task);
+            case MSG_SOLUTION: return sizeof(struct msg_solution);
+            case MSG_VERIFICATION: return sizeof(struct msg_verification);
+            default: assert(false && "Message size not known!");
         }
 }
 
