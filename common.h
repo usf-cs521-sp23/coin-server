@@ -34,6 +34,7 @@ union __attribute__((__packed__)) msg_wrapper {
 };
 
 enum MSG_TYPES {
+        MSG_HEADER,
         MSG_SOLUTION,
         MSG_VERIFICATION,
         MSG_HEARTBEAT,

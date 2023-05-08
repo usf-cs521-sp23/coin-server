@@ -62,7 +62,9 @@ int write_len(const int fd, const void *buf, size_t length)
 size_t msg_size(enum MSG_TYPES type)
 {
         switch (type) {
+                case MSG_HEADER: return sizeof(struct msg_header);
                 case MSG_SOLUTION: return sizeof(struct msg_solution);
+                case MSG_TASK: return sizeof(struct msg_task);
                 default: return -1;
         }
 }
