@@ -116,15 +116,24 @@ void *client_thread(void* client_fd) {
 
 int main(int argc, char *argv[]) {
 
-    if (argc != 2) {
-        printf("Usage: %s port\n", argv[0]);
+    if (argc < 2) {
+        printf("Usage: %s port [seed]\n", argv[0]);
         return 1;
+    }
+    
+    int seed = 0;
+    if (argc == 3) {
+        char *end;
+        seed = strtol(argv[2], &end, 10);
+        if (end == argv[2]) {
+            fprintf(stderr, "Invalid seed: %s\n", argv[2]);
+        }
     }
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
     
-    task_init();
+    task_init(seed);
     task_generate(current_block);
     LOG("Current block: %s\n", current_block);
 

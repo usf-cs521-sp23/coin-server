@@ -29096,11 +29096,17 @@ const size_t ani_sz = sizeof(animals) / sizeof(char *);
  * Seeds the random number generator and then sets up task generation data
  * structures by shuffling task components.
  */
-void task_init()
+void task_init(int seed)
 {
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
-    srand(time(NULL));
     
+    if (seed == 0) {
+        seed = time(NULL);
+    }
+    
+    LOG("Random seed: %d\n", seed);
+    srand(seed);
+
     size_t max_ani_len = 0;
     for (int i = 0; i < ani_sz; ++i)
     {
