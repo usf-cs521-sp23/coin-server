@@ -29092,6 +29092,10 @@ char *adjectives[] = {
 const size_t adj_sz = sizeof(adjectives) / sizeof(char *);
 const size_t ani_sz = sizeof(animals) / sizeof(char *);
 
+/**
+ * Seeds the random number generator and then sets up task generation data
+ * structures by shuffling task components.
+ */
 void task_init()
 {
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
@@ -29118,7 +29122,7 @@ void task_init()
     LOG("Longest adjective length: %zu\n", max_adj_len);
 
     size_t longest_task_len = max_ani_len + max_adj_len + 1;
-    assert(longest_task_len < MAX_TASK_LEN);
+    assert(longest_task_len < MAX_BLOCK_LEN);
     
     LOGP("Shuffling animals.\n");
     fisher_yates(animals, ani_sz);
@@ -29129,7 +29133,7 @@ void task_init()
     LOGP("Task generator ready.\n");
 }
 
-void task_generate(char buf[MAX_TASK_LEN])
+void task_generate(char buf[MAX_BLOCK_LEN])
 {
     sprintf(buf, "%s %s", adjectives[adj_idx++], animals[ani_idx++]);
     

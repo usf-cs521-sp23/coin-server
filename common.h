@@ -1,8 +1,11 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <inttypes.h>
+
+#include "task.h"
 
 #ifndef VERSION
 #define VERSION 1.0
@@ -17,13 +20,15 @@ struct __attribute__((__packed__)) msg_header {
 
 struct __attribute__((__packed__)) msg_task {
         struct msg_header header;
-        char block[128];
-        long difficulty;
+        char block[MAX_BLOCK_LEN];
+        uint32_t difficulty;
 };
 
 struct __attribute__((__packed__)) msg_solution {
         struct msg_header header;
         char username[20];
+        char block[MAX_BLOCK_LEN];
+        uint32_t difficulty;
         uint64_t nonce;
 };
 

@@ -17,7 +17,8 @@
 #include "logger.h"
 #include "task.h"
 
-static char current_task[MAX_TASK_LEN];
+static char current_block[MAX_BLOCK_LEN];
+static uint32_t current_difficulty = 0x0000FFF;
 
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
@@ -67,9 +68,8 @@ int main(int argc, char *argv[]) {
     LOG("%s", "(c) 2023 CS 521 Students\n");
     
     task_init();
-    
-    task_generate(current_task);
-    LOG("Current task: %s\n", current_task);
+    task_generate(current_block);
+    LOG("Current block: %s\n", current_block);
 
     int port = atoi(argv[1]);
 
