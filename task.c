@@ -44,12 +44,8 @@ size_t ani_sz = 0;
  */
 void task_init(int seed)
 {
-    /** [05/07/23 InhwaS] ---------- start ---------- */
     ani_sz = read_file("animals", &animals);
-    LOG("finished reading animals. animal array size [%zu]\n", ani_sz);
-
     adj_sz = read_file("adjectives", &adjectives);
-    LOG("finished reading adjectives. adjective array size [%zu]\n", adj_sz);
     
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
 
@@ -115,30 +111,29 @@ void fisher_yates(char *arr[], size_t sz)
     }
 }
 
-/** [05/07/23 InhwaS] ---------- start ---------- */
 size_t read_file(char filename[], char ***array){
     FILE *file = fopen(filename, "r");
     if ( file == NULL ){
         perror("fopen for file");
     }
 
-    char buf[128] = { 0 };
+    /* Determine the number of lines in the file */
+    char buf[MAX_BLOCK_LEN] = { 0 };
     int i = 0;
     while (fgets(buf, sizeof(buf), file) != NULL) {
         i++;
     }
-    *array = malloc(i * sizeof(char*));
-    fclose(file);   
+    *array = malloc(i * sizeof(char *));
 
+    /* Read the contents */
+    fseek(file, 0L, SEEK_SET);
     i = 0;
-    FILE *file_again = fopen(filename, "r");
-    while (fgets(buf, sizeof(buf), file_again) != NULL) {
+    while (fgets(buf, sizeof(buf), file) != NULL) {
         strtok(buf, "\r\n");
         
         (*array)[i] = strdup(buf);
         i++;
     }
-    fclose(file_again);   
+    fclose(file);   
     return i;
 }
-/** [05/07/23 InhwaS] ---------- end ---------- */
