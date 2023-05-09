@@ -9,7 +9,7 @@ int read_len(int fd, void *buf, size_t length)
 {
   size_t total = 0;
   while (total < length) {
-    ssize_t read_sz = read(fd, buf + total, length - total);
+    ssize_t read_sz = read(fd, (char *)buf + total, length - total);
     if (read_sz == -1) {
         if (errno == EINTR) {
             // if we get interrupted then we should try reading again
@@ -38,7 +38,7 @@ int write_len(const int fd, const void *buf, size_t length)
 {
   size_t total = 0;
   while (total < length) {
-    ssize_t write_sz = write(fd, buf + total, length - total);
+    ssize_t write_sz = write(fd, (char *)buf + total, length - total);
     if (write_sz == -1) {
         if (errno == EINTR) {
             // if we get interrupted then we should try reading again
