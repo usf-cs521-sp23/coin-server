@@ -18,8 +18,43 @@
 #include "task.h"
 #include "sha1.h"
 
+#define MAX_USERS 100
+#define USERNAME_LENGTH 20
+
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
+
+struct user_info {
+    char username[USERNAME_LENGTH];
+    uint32_t wins;
+};
+
+static struct user_info leaderboard[MAX_USERS];
+static int num_users = 0;
+
+void update_leaderboard(char *username) {
+    int user_index = -1;
+    // find user in leaderboard
+    for (int i = 0; i < num_users; i++) {
+        if (strcmp(leaderboard[i].username, username)) {
+            user_index = i;
+            break;
+        }
+    }
+    if (user_index == -1) {
+        if (num_users < MAX_USERS) {
+            strncpy(leaderboard[num_users].username, username, USERNAME_LENGTH - 1);
+            leaderboard[num_users].wins = 1;
+            num_users++;
+        } else {
+            printf("Leaderboard is full\n");
+            EXIT_FAILURE;
+        }
+    } else {
+        leaderboard[user_index].wins++;
+    }
+
+}
 
 void handle_request_task(int fd, struct msg_request_task *req)
 {
@@ -85,6 +120,7 @@ void handle_solution(int fd, struct msg_solution *solution)
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
     if (verification->ok) {
+        update_leaderboard(solution->username);
         task_generate(current_block);
         LOG("Generated new block: %s\n", current_block);
     }
