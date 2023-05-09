@@ -38,6 +38,11 @@ bool verify_solution(struct msg_solution *solution)
     const char *check_format = "%s%lu";
     ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
     char *buf = malloc(buf_sz + 1);
+    if(buf == NULL) {
+        perror("malloc buf in verify_solution");
+        return EXIT_FAILURE;
+    }
+    
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
     char hash_string[521];
@@ -69,13 +74,21 @@ void handle_solution(int fd, struct msg_solution *solution)
     if (strcmp(current_block, solution->block) != 0)
     {
         strcpy(verification->error_description, "Block does not match current block on server");
-        write_msg(fd, &wrapper);
+        
+        //error occurs during the write, return -1
+        if(write_msg(fd, &wrapper) == -1) {
+            perror("socket write");
+        }
         return;
     }
     
     if (current_difficulty !=  solution->difficulty) {
         strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
         write_msg(fd, &wrapper);
+        //error occurs during the write, return -1
+        if(write_msg(fd, &wrapper) == -1) {
+            perror("socket write");
+        }
         return;
     }
 
@@ -99,10 +112,16 @@ void *client_thread(void* client_fd) {
 //        void *sol_ptr = (char *) &solution + sizeof(struct msg_header);
 //        read_len(fd, sol_ptr, header.msg_len - sizeof(struct msg_header));
 //
+      
       union msg_wrapper msg;
-       if (read_msg(fd, &msg) <= 0) {
+       ssize_t bytes_read = read_msg(fd, &msg); // split disconnection status and error handler 
+       if(bytes_read == -1){
+            perror("read_msg");
+            return NULL;
+       }
+       else if (read_msg(fd, &msg) == 0) {
            LOGP("Disconnecting client\n");
-        return NULL;
+            return NULL;
        }
         switch (msg.header.msg_type) {
             case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
