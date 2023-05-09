@@ -80,7 +80,7 @@ int write_len(const int fd, const void *buf, size_t length);
 
 union msg_wrapper create_msg(enum MSG_TYPES type);
 
-union msg_wrapper read_msg(int fd);
+int read_msg(int fd, union msg_wrapper *msg);
 
 int write_msg(int fd, const union msg_wrapper *msg);
 

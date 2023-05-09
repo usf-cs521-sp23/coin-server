@@ -37,9 +37,12 @@ bool verify_solution(struct msg_solution *solution)
     uint8_t digest[SHA1_HASH_SIZE];
     const char *check_format = "%s%lu";
     ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
-    char *buf = malloc(buf_sz);
-    snprintf(buf, buf_sz, check_format, current_block, solution->nonce);
+    char *buf = malloc(buf_sz + 1);
+    snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
+    char hash_string[521];
+    sha1tostring(hash_string, digest);
+    LOG("SHA1sum: '%s' => '%s'\n", buf, hash_string);
     free(buf);
 
     /* Get the first 32 bits of the hash */
@@ -79,6 +82,12 @@ void handle_solution(int fd, struct msg_solution *solution)
     verification->ok = verify_solution(solution);
     strcpy(verification->error_description, "Verified SHA-1 hash");
     write_msg(fd, &wrapper);
+    LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
+    
+    if (verification->ok) {
+        task_generate(current_block);
+        LOG("Generated new block: %s\n", current_block);
+    }
 }
 
 void *client_thread(void* client_fd) {
@@ -89,7 +98,12 @@ void *client_thread(void* client_fd) {
 //        struct msg_solution solution;
 //        void *sol_ptr = (char *) &solution + sizeof(struct msg_header);
 //        read_len(fd, sol_ptr, header.msg_len - sizeof(struct msg_header));
-        union msg_wrapper msg = read_msg(fd);
+//
+      union msg_wrapper msg;
+       if (read_msg(fd, &msg) <= 0) {
+           LOGP("Disconnecting client\n");
+        return NULL;
+       }
         switch (msg.header.msg_type) {
             case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
                                    break;

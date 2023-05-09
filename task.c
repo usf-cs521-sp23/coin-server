@@ -20,23 +20,13 @@ static size_t adj_idx = 0;
 
 void fisher_yates(char *arr[], size_t sz);
 
-/** [05/07/23 InhwaS] ---------- start ---------- */
-// Since we updated char *array[] into dynamic array, 
-//       we need pointer to dynamic array(**char) as a parameter which is "***char"
 size_t read_file(char filename[], char ***array);
 
-// char *animals[] = {...}
-// char *adjectives[] = {...}
-// ==> changed into dynamic array 
 char **animals;
 char **adjectives;
 
-// const size_t adj_sz = sizeof(adjectives) / sizeof(char *);
-// const size_t ani_sz = sizeof(animals) / sizeof(char *);
-// ==> changed const variable because we need to calculate them from the task_init() function.
-size_t adj_sz = 0; 
-size_t ani_sz = 0;
-/** [05/07/23 InhwaS] ---------- end ---------- */
+static size_t adj_sz = 0; 
+static size_t ani_sz = 0;
 
 /**
  * Seeds the random number generator and then sets up task generation data
