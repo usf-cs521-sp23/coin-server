@@ -21,14 +21,26 @@
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
 
-void handle_request_task(int fd, struct msg_request_task *req)
+union msg_wrapper current_task(void)
 {
-    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty);
     union msg_wrapper wrapper = create_msg(MSG_TASK);
     struct msg_task *task = &wrapper.task;
     strcpy(task->block, current_block);
     task->difficulty = current_difficulty;
+    return wrapper;
+}
 
+void handle_heartbeat(int fd, struct msg_heartbeat *hb)
+{
+    LOG("[HEARTBEAT] %s\n", hb->username);
+    union msg_wrapper wrapper = current_task();
+    write_msg(fd, &wrapper);
+}
+
+void handle_request_task(int fd, struct msg_request_task *req)
+{
+    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty);
+    union msg_wrapper wrapper = current_task();
     write_msg(fd, &wrapper);
 }
 
@@ -93,37 +105,23 @@ void handle_solution(int fd, struct msg_solution *solution)
 void *client_thread(void* client_fd) {
     int fd = (int) (long) client_fd;
     while (true) {
-//        struct msg_header header;
-//        read_len(fd, &header, sizeof(struct msg_header));
-//        struct msg_solution solution;
-//        void *sol_ptr = (char *) &solution + sizeof(struct msg_header);
-//        read_len(fd, sol_ptr, header.msg_len - sizeof(struct msg_header));
-//
-      union msg_wrapper msg;
-       if (read_msg(fd, &msg) <= 0) {
-           LOGP("Disconnecting client\n");
-        return NULL;
-       }
+        union msg_wrapper msg;
+        if (read_msg(fd, &msg) <= 0) {
+            LOGP("Disconnecting client\n");
+            return NULL;
+        }
+
         switch (msg.header.msg_type) {
             case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
                                    break;
             case MSG_SOLUTION: handle_solution(fd, (struct msg_solution *) &msg.solution);
                                break;
+            case MSG_HEARTBEAT: handle_heartbeat(fd, (struct msg_heartbeat *) &msg.heartbeat);
+                                break;
             default:
                 LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
     }
-    
-    /* Server checklist:
-     * 
-     * - Figure out what the blocks are that the clients will solve
-     *      ravishing dijkstra
-     *      alive koala
-     * - Hand out tasks
-     * - Verify tasks
-     * - Keep track of everybody's money and send it to Matthew
-     */
-
     return NULL;
 }
 
