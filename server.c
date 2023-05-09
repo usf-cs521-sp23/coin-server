@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h> 
+#include <time.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -20,6 +21,7 @@
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
+FILE *records;
 
 union msg_wrapper current_task(void)
 {
@@ -68,9 +70,17 @@ bool verify_solution(struct msg_solution *solution)
     return (hash_front & current_difficulty) == hash_front;
 }
 
+void add_record(struct msg_solution *solution)
+{
+    records = fopen("records.txt", "a");
+    fprintf(records, "%s %u %zu %s %zu", solution->block, solution->difficulty, solution->nonce, solution->username, time(NULL));
+    fclose(records);
+}
+
 void handle_solution(int fd, struct msg_solution *solution)
 {
     LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
+    add_record(solution);
     
     union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
     struct msg_verification *verification = &wrapper.verification;
@@ -124,7 +134,6 @@ void *client_thread(void* client_fd) {
     }
     return NULL;
 }
-
 
 int main(int argc, char *argv[]) {
 
