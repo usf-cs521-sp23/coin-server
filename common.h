@@ -25,6 +25,7 @@ struct __attribute__((__packed__)) msg_request_task {
 
 struct __attribute__((__packed__)) msg_task {
         struct msg_header header;
+        uint64_t sequence_num;
         char block[MAX_BLOCK_LEN];
         uint32_t difficulty;
 };
@@ -43,12 +44,19 @@ struct __attribute__((__packed__)) msg_verification {
         char error_description[128];
 };
 
+struct __attribute__((__packed__)) msg_heartbeat {
+        struct msg_header header;
+        char username[20];
+        uint64_t sequence_num;
+};
+
 union __attribute__((__packed__)) msg_wrapper {
         struct msg_header header;
         struct msg_request_task request_task;
         struct msg_task task;
         struct msg_solution solution;
         struct msg_verification verification;
+        struct msg_heartbeat heartbeat;
 };
 
 enum MSG_TYPES {
@@ -57,8 +65,6 @@ enum MSG_TYPES {
         MSG_SOLUTION,
         MSG_VERIFICATION,
         MSG_HEARTBEAT,
-        MSG_STATUS,
-        MSG_ID,
 };
 
 size_t msg_size(enum MSG_TYPES type);
