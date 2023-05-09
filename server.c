@@ -18,8 +18,12 @@
 #include "task.h"
 #include "sha1.h"
 
+//added LOG file variable
+#define LOG_FILE "task_log.txt"
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
+
+
 
 union msg_wrapper current_task(void)
 {
@@ -44,6 +48,25 @@ void handle_request_task(int fd, struct msg_request_task *req)
     write_msg(fd, &wrapper);
 }
 
+void log_task(struct msg_solution *solution) {
+    //we open the log file (create it if it doesn't already exist)
+    FILE *log_file = fopen(LOG_FILE, "a+");
+    if (log_file == NULL) {
+        fprintf(stderr, "Error opening task log file\n");
+        exit(1);
+    }
+
+    fprintf(
+    log_file, 
+    "%s\t%d\t%lu\t%s\t%ld\n", 
+            solution->block, 
+            solution->difficulty, 
+            solution->nonce, 
+            solution->username, 
+            time(NULL));
+    fclose(log_file);
+}
+
 bool verify_solution(struct msg_solution *solution)
 {
     uint8_t digest[SHA1_HASH_SIZE];
@@ -65,7 +88,12 @@ bool verify_solution(struct msg_solution *solution)
     hash_front |= digest[3];
 
     /* Check to see if we've found a solution to our block */
-    return (hash_front & current_difficulty) == hash_front;
+    if ((hash_front & current_difficulty) == hash_front) {
+        log_task(solution);
+        return true;
+    } 
+    
+    return false;
 }
 
 void handle_solution(int fd, struct msg_solution *solution)
@@ -124,7 +152,6 @@ void *client_thread(void* client_fd) {
     }
     return NULL;
 }
-
 
 int main(int argc, char *argv[]) {
 
