@@ -40,7 +40,7 @@ bool verify_solution(struct msg_solution *solution)
     char *buf = malloc(buf_sz + 1);
     if(buf == NULL) {
         perror("malloc buf in verify_solution");
-        return EXIT_FAILURE;
+        return NULL;
     }
     
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
