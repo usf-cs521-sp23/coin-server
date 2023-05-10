@@ -91,7 +91,6 @@ void handle_solution(int fd, struct msg_solution *solution)
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
     if (verification->ok) {
-        update_leaderboard(solution->username);
         task_generate(current_block);
         LOG("Generated new block: %s\n", current_block);
     }
