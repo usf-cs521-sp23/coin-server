@@ -80,6 +80,10 @@ bool verify_solution(struct msg_solution *solution)
     const char *check_format = "%s%lu";
     ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
     char *buf = malloc(buf_sz + 1);
+    if(buf == NULL){
+        perror("Could not allocate memory to buffer");
+        return false;
+    }
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
     char hash_string[521];
