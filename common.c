@@ -25,12 +25,12 @@ int read_len(int fd, void *buf, size_t length)
 
     total += read_sz;
   }
-#ifdef DEBUG_ON
+  if (DEBUG_ON) {
   for (int i = 0; i < length; ++i) {
     fprintf(stderr, "%02X ", ((char *) buf)[i]);
   }
   fprintf(stderr, "\n");
-#endif
+  }
   return total;
 }
 
@@ -52,12 +52,12 @@ int write_len(const int fd, const void *buf, size_t length)
     total += write_sz;
   }
 
-#ifdef DEBUG_ON
+if(DEBUG_ON) {
   for (int i = 0; i < length; ++i) {
     fprintf(stderr, "%02X ", ((char *) buf)[i]);
   }
   fprintf(stderr, "\n");
-#endif
+}
 
   return total;
 }

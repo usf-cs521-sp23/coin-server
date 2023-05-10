@@ -7,7 +7,9 @@
 
 #include "task.h"
 
+#ifndef DEBUG_ON
 #define DEBUG_ON 1
+#endif
 
 struct __attribute__((__packed__)) msg_header {
     uint64_t msg_len;
