@@ -20,6 +20,10 @@
 
 //added LOG file variable
 #define LOG_FILE "task_log.txt"
+
+//added FILE pointer to log file
+FILE *log_file;
+
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
 
@@ -48,14 +52,15 @@ void handle_request_task(int fd, struct msg_request_task *req)
     write_msg(fd, &wrapper);
 }
 
-void log_task(struct msg_solution *solution) {
-    //we open the log file (create it if it doesn't already exist)
-    FILE *log_file = fopen(LOG_FILE, "a+");
+void open_log_file() {
+    //Try to open the log file (create it if it doesn't already exist)
+    log_file = fopen(LOG_FILE, "a+");
     if (log_file == NULL) {
         fprintf(stderr, "Error opening task log file\n");
-        exit(1);
     }
+}
 
+void log_task(struct msg_solution *solution) {
     fprintf(
     log_file, 
     "%s\t%d\t%lu\t%s\t%ld\n", 
@@ -64,7 +69,9 @@ void log_task(struct msg_solution *solution) {
             solution->nonce, 
             solution->username, 
             time(NULL));
-    fclose(log_file);
+
+    //we fflush the file to ensure the write is on the disk after each update
+    fflush(log_file);
 }
 
 bool verify_solution(struct msg_solution *solution)
@@ -87,13 +94,12 @@ bool verify_solution(struct msg_solution *solution)
     hash_front |= digest[2] << 8;
     hash_front |= digest[3];
 
-    /* Check to see if we've found a solution to our block */
+    /* Check to see if we've found a solution to our block and add it to the log file */
     if ((hash_front & current_difficulty) == hash_front) {
         log_task(solution);
-        return true;
-    } 
+    }
     
-    return false;
+    return (hash_front & current_difficulty) == hash_front;
 }
 
 void handle_solution(int fd, struct msg_solution *solution)
@@ -171,6 +177,9 @@ int main(int argc, char *argv[]) {
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
+
+    //open the log_file when the server starts up
+    open_log_file();
     
     task_init(seed);
     task_generate(current_block);
@@ -232,6 +241,8 @@ int main(int argc, char *argv[]) {
         pthread_create(&thread, NULL, client_thread, (void *) (long) client_fd);
         pthread_detach(thread);
     }
-
+    
+    //Closing log_file before we exit the server.
+    fclose(log_file);
     return 0; 
 }
