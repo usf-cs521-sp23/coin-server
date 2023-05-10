@@ -18,10 +18,27 @@
 #include "task.h"
 #include "sha1.h"
 
+#define TASK_LOG_FILE "task_log.txt"
 #define MAX_DIFFICULTY 32
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
+
+/* Appends a new task log entry to a file containing the block string, 
+difficulty, nonce, username who solved it, and the current Unix timestamp */
+void update_task_log(const char *block, uint32_t difficulty, uint64_t nonce, const char *username) {
+    FILE *file = fopen(TASK_LOG_FILE, "a");
+    if (file == NULL) {
+        perror("Error opening task log file for appending");
+        return;
+    }
+
+    time_t current_time = time(NULL);
+
+    fprintf(file, "%s\t%u\t%" PRIu64 "\t%s\t%ld\n", block, difficulty, nonce, username, current_time);
+    fclose(file);
+    LOG("Task log entry added to %s\n", TASK_LOG_FILE);
+}
 
 void handle_request_task(int fd, struct msg_request_task *req)
 {
@@ -91,6 +108,7 @@ void handle_solution(int fd, struct msg_solution *solution)
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
     if (verification->ok) {
+        update_task_log(current_block, current_difficulty, solution->nonce, solution->username);
         task_generate(current_block);
         LOG("Generated new block: %s\n", current_block);
     }
