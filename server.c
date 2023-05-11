@@ -25,7 +25,7 @@
 FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty = 0x0000FFF;
+static uint32_t current_difficulty = 0x0000FFFF;
 
 
 
