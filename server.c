@@ -27,7 +27,17 @@ FILE *log_file;
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
 
+struct options {
+    int random_seed;
+    char* adj_file;
+    char* animal_file;
+    char* log_file;
+    bool adj_free : 1;
+    bool animal_free : 1;
+    bool log_free : 1;
+};
 
+struct options default_options = {0, "adjectives", "animals", "task_log.txt", false, false, false};
 
 union msg_wrapper current_task(void)
 {
@@ -36,6 +46,18 @@ union msg_wrapper current_task(void)
     strcpy(task->block, current_block);
     task->difficulty = current_difficulty;
     return wrapper;
+}
+
+void print_usage(char *prog_name)
+{
+    printf("Usage: %s port [-s seed] [-a adjective_file] [-n animal_file] [-l log_file]" , prog_name);
+    printf("\n");
+    printf("Options:\n"
+"    * -s    Specify the seed number\n"
+"    * -a    Specify the adjective file to be used\n"
+"    * -n    Specify the animal file to be used\n"
+"    * -l    Specify the log file to be used\n");
+    printf("\n");
 }
 
 void handle_heartbeat(int fd, struct msg_heartbeat *hb)
@@ -52,9 +74,9 @@ void handle_request_task(int fd, struct msg_request_task *req)
     write_msg(fd, &wrapper);
 }
 
-void open_log_file() {
+void open_log_file(char* file_name) {
     //Try to open the log file (create it if it doesn't already exist)
-    log_file = fopen(LOG_FILE, "a+");
+    log_file = fopen(file_name, "a+");
     if (log_file == NULL) {
         fprintf(stderr, "Error opening task log file\n");
     }
@@ -181,26 +203,68 @@ void *client_thread(void* client_fd) {
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
-        printf("Usage: %s port [seed]\n", argv[0]);
+        print_usage(argv[0]);
         return 1;
     }
-    
-    int seed = 0;
-    if (argc == 3) {
+
+    struct options opts;
+    opts = default_options;
+
+    int c;
+    opterr = 0;
+    while ((c = getopt(argc, argv, "s:a:n:l:")) != -1) {
+        switch (c) {
         char *end;
-        seed = strtol(argv[2], &end, 10);
-        if (end == argv[2]) {
-            fprintf(stderr, "Invalid seed: %s\n", argv[2]);
+            case 's':
+                opts.random_seed = (int) strtol(optarg, &end, 10);
+                if (end == optarg) {
+                    return 1;
+                }
+                break;
+            case 'a':
+                opts.adj_file = malloc(strlen(optarg) + 1);
+                if(opts.adj_file == NULL){
+                    perror("malloc");
+                    return false;
+                }
+                opts.adj_free = true;
+                strcpy(opts.adj_file, optarg);
+                break;
+            case 'n':
+                opts.animal_file = malloc(strlen(optarg) + 1);
+                if(opts.animal_file == NULL){
+                    perror("malloc");
+                    return false;
+                }
+                opts.animal_free = true;
+                strcpy(opts.animal_file, optarg);
+                break;
+            case 'l':
+                opts.log_file = malloc(strlen(optarg) + 1);
+                if(opts.log_file == NULL){
+                    perror("malloc");
+                    return false;
+                }
+                opts.log_free = true;
+                strcpy(opts.log_file, optarg);
+                break;
         }
     }
+
+    LOG("seed is %d\n", opts.random_seed);
+    LOG("adj file is %s\n", opts.adj_file);
+    LOG("animal file is %s\n", opts.animal_file);
+    LOG("log file is %s\n", opts.log_file);
+    
+    //when to free and how???
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
 
     //open the log_file when the server starts up
-    open_log_file();
+    open_log_file(opts.log_file);
     
-    task_init(seed);
+    task_init(opts.random_seed, opts.adj_file, opts.animal_file);
     task_generate(current_block);
     LOG("Current block: %s\n", current_block);
 
@@ -260,7 +324,15 @@ int main(int argc, char *argv[]) {
         pthread_create(&thread, NULL, client_thread, (void *) (long) client_fd);
         pthread_detach(thread);
     }
-    
+    if(opts.adj_free){
+        free(opts.adj_file);
+    }
+    if(opts.animal_free){
+        free(opts.animal_file);
+    }
+    if(opts.log_free){
+        free(opts.log_file);
+    }
     //Closing log_file before we exit the server.
     fclose(log_file);
     return 0; 

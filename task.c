@@ -32,8 +32,11 @@ static size_t ani_sz = 0;
  * Seeds the random number generator and then sets up task generation data
  * structures by shuffling task components.
  */
-void task_init(int seed)
+void task_init(int seed, char* adjective_file, char* animal_file)
 {
+    LOG("adjective file is %s\n", adjective_file);
+    LOG("animal file is %s\n", animal_file);
+    
     ani_sz = read_file("animals", &animals);
     adj_sz = read_file("adjectives", &adjectives);
     
