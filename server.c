@@ -87,7 +87,7 @@ bool verify_solution(struct msg_solution *solution)
 
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
-    char hash_string[521];
+    char hash_string[41];
     sha1tostring(hash_string, digest);
     LOG("SHA1sum: '%s' => '%s'\n", buf, hash_string);
     free(buf);
