@@ -193,9 +193,9 @@ int main(int argc, char *argv[]) {
     if (argc == 3) {
         char *end;
         seed = strtol(argv[2], &end, 10);
-        if (end == argv[2]) {
+        if (end == argv[2] || seed == 0) {
             fprintf(stderr, "Invalid seed: %s\n", argv[2]);
-        }
+        } 
     }
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
