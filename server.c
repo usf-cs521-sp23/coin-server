@@ -175,6 +175,7 @@ void *client_thread(void* client_fd) {
                 LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
     }
+    close(fd);
     return NULL;
 }
 
