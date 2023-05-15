@@ -25,7 +25,33 @@
 FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty = 0x0000FFF;
+static uint32_t current_difficulty;
+
+uint32_t generate_difficulty_mask(void)
+{
+    srand(time(NULL));
+    uint8_t leading_zeros = rand() % 25 + 8; // Combine Vlidation and random task difficulty
+    //range from 8 to 32 0's (both inclusive)
+
+    if (leading_zeros == 32) {
+        return 0; // handle cornor case 
+    }
+
+    uint32_t mask = 0xFFFFFFFF;
+
+    // shit 0's in binary version. 
+    while (__builtin_clz(mask) > (32 - leading_zeros)) {
+        mask >>= 1; 
+    }
+
+    current_difficulty = mask;
+
+    return mask;
+}
+
+
+
+
 
 
 
@@ -34,7 +60,7 @@ union msg_wrapper current_task(void)
     union msg_wrapper wrapper = create_msg(MSG_TASK);
     struct msg_task *task = &wrapper.task;
     strcpy(task->block, current_block);
-    task->difficulty = current_difficulty;
+    task->difficulty = generate_difficulty_mask();
     return wrapper;
 }
 
@@ -103,6 +129,7 @@ bool verify_solution(struct msg_solution *solution)
     if ((hash_front & current_difficulty) == hash_front) {
         log_task(solution);
     }
+    
     
     return (hash_front & current_difficulty) == hash_front;
 }
