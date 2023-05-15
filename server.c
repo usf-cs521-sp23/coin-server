@@ -28,7 +28,6 @@ static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty = 0x0000FFF;
 
 
-
 union msg_wrapper current_task(void)
 {
     union msg_wrapper wrapper = create_msg(MSG_TASK);
@@ -36,6 +35,41 @@ union msg_wrapper current_task(void)
     strcpy(task->block, current_block);
     task->difficulty = current_difficulty;
     return wrapper;
+}
+
+int hammingWeightOp(uint32_t n) {
+	int count = 0;
+	while(n) {
+		n = n&(n-1);
+		count++;
+	}
+	return 32 - count;
+}
+
+void increase_difficulty(void){
+    // should increase the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes + 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Increased difficulty to %08x\n", current_difficulty);
+}
+
+void decrease_difficulty(void){
+    // should decrease the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes - 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Decreased difficulty to %08x\n", current_difficulty);
 }
 
 void handle_heartbeat(int fd, struct msg_heartbeat *hb)
@@ -231,6 +265,7 @@ int main(int argc, char *argv[]) {
             perror("accept");
             return 1;
         }
+
 
 	// find out their info (host name, port)
         char remote_host[INET_ADDRSTRLEN];
