@@ -27,7 +27,7 @@ FILE *log_file;
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
 
-
+pthread_mutex_t lock;
 
 union msg_wrapper current_task(void)
 {
@@ -109,6 +109,8 @@ bool verify_solution(struct msg_solution *solution)
 
 void handle_solution(int fd, struct msg_solution *solution)
 {
+    pthread_mutex_lock(&lock); // lock the function so that it is only executed by one thread at a time
+
     LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
     
     union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
@@ -125,6 +127,7 @@ void handle_solution(int fd, struct msg_solution *solution)
         if(write_msg(fd, &wrapper) == -1) {
             perror("socket write");
         }
+        pthread_mutex_unlock(&lock);
         return;
     }
     
@@ -135,6 +138,7 @@ void handle_solution(int fd, struct msg_solution *solution)
         if(write_msg(fd, &wrapper) == -1) {
             perror("socket write");
         }
+        pthread_mutex_unlock(&lock);
         return;
     }
 
@@ -147,6 +151,8 @@ void handle_solution(int fd, struct msg_solution *solution)
         task_generate(current_block);
         LOG("Generated new block: %s\n", current_block);
     }
+
+    pthread_mutex_unlock(&lock);
 }
 
 void *client_thread(void* client_fd) {
@@ -180,6 +186,11 @@ void *client_thread(void* client_fd) {
 }
 
 int main(int argc, char *argv[]) {
+
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
 
     if (argc < 2) {
         printf("Usage: %s port [seed]\n", argv[0]);
@@ -264,5 +275,6 @@ int main(int argc, char *argv[]) {
     
     //Closing log_file before we exit the server.
     fclose(log_file);
+    pthread_mutex_destroy(&lock);
     return 0; 
 }
