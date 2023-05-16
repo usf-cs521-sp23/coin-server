@@ -25,7 +25,7 @@
 FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty = 0x00000FF;
+static uint32_t current_difficulty_mask = 0x00000FF;
 
 struct options {
     int random_seed;
@@ -44,7 +44,7 @@ union msg_wrapper current_task(void)
     union msg_wrapper wrapper = create_msg(MSG_TASK);
     struct msg_task *task = &wrapper.task;
     strcpy(task->block, current_block);
-    task->difficulty = current_difficulty;
+    task->difficulty = current_difficulty_mask;
     return wrapper;
 }
 
@@ -69,7 +69,7 @@ void handle_heartbeat(int fd, struct msg_heartbeat *hb)
 
 void handle_request_task(int fd, struct msg_request_task *req)
 {
-    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty);
+    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty_mask);
     union msg_wrapper wrapper = current_task();
     write_msg(fd, &wrapper);
 }
@@ -109,7 +109,7 @@ bool verify_solution(struct msg_solution *solution)
 
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
-    char hash_string[521];
+    char hash_string[41];
     sha1tostring(hash_string, digest);
     LOG("SHA1sum: '%s' => '%s'\n", buf, hash_string);
     free(buf);
@@ -122,11 +122,11 @@ bool verify_solution(struct msg_solution *solution)
     hash_front |= digest[3];
 
     /* Check to see if we've found a solution to our block and add it to the log file */
-    if ((hash_front & current_difficulty) == hash_front) {
+    if ((hash_front & current_difficulty_mask) == hash_front) {
         log_task(solution);
     }
     
-    return (hash_front & current_difficulty) == hash_front;
+    return (hash_front & current_difficulty_mask) == hash_front;
 }
 
 void handle_solution(int fd, struct msg_solution *solution)
@@ -150,7 +150,7 @@ void handle_solution(int fd, struct msg_solution *solution)
         return;
     }
     
-    if (current_difficulty !=  solution->difficulty) {
+    if (current_difficulty_mask !=  solution->difficulty) {
         strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
         write_msg(fd, &wrapper);
         //error occurs during the write, return -1
@@ -197,6 +197,7 @@ void *client_thread(void* client_fd) {
                 LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
     }
+    close(fd);
     return NULL;
 }
 
