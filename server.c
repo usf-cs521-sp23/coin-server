@@ -109,8 +109,6 @@ bool verify_solution(struct msg_solution *solution)
 
 void handle_solution(int fd, struct msg_solution *solution)
 {
-    pthread_mutex_lock(&lock); // lock the function so that it is only executed by one thread at a time
-
     LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
     
     union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
@@ -127,7 +125,6 @@ void handle_solution(int fd, struct msg_solution *solution)
         if(write_msg(fd, &wrapper) == -1) {
             perror("socket write");
         }
-        pthread_mutex_unlock(&lock);
         return;
     }
     
@@ -138,21 +135,23 @@ void handle_solution(int fd, struct msg_solution *solution)
         if(write_msg(fd, &wrapper) == -1) {
             perror("socket write");
         }
-        pthread_mutex_unlock(&lock);
         return;
     }
-
+    
+    pthread_mutex_lock(&lock); // lock before verification so that it is only executed by one thread at a time
     verification->ok = verify_solution(solution);
+
+    if (verification->ok) {
+        task_generate(current_block); // generate new task if necessary
+        LOG("Generated new block: %s\n", current_block);
+    }
+
+    pthread_mutex_unlock(&lock); // unlock after verification
+
     strcpy(verification->error_description, "Verified SHA-1 hash");
     write_msg(fd, &wrapper);
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
-    if (verification->ok) {
-        task_generate(current_block);
-        LOG("Generated new block: %s\n", current_block);
-    }
-
-    pthread_mutex_unlock(&lock);
 }
 
 void *client_thread(void* client_fd) {
