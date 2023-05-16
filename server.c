@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <arpa/inet.h>
+#include <bits/getopt_core.h>
 #include <dirent.h>
 #include <inttypes.h>
 #include <netinet/in.h>
@@ -32,12 +33,9 @@ struct options {
     char* adj_file;
     char* animal_file;
     char* log_file;
-    bool adj_free : 1;
-    bool animal_free : 1;
-    bool log_free : 1;
 };
 
-struct options default_options = {0, "adjectives", "animals", "task_log.txt", false, false, false};
+struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
 
 union msg_wrapper current_task(void)
 {
@@ -225,33 +223,15 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
-                opts.adj_file = malloc(strlen(optarg) + 1);
-                if(opts.adj_file == NULL){
-                    perror("malloc");
-                    return false;
-                }
-                opts.adj_free = true;
-                strcpy(opts.adj_file, optarg);
+                opts.adj_file = optarg;
                 LOG("adj file is %s\n", opts.adj_file);
                 break;
             case 'n':
-                opts.animal_file = malloc(strlen(optarg) + 1);
-                if(opts.animal_file == NULL){
-                    perror("malloc");
-                    return false;
-                }
-                opts.animal_free = true;
-                strcpy(opts.animal_file, optarg);
+                opts.animal_file = optarg;
                 LOG("animal file is %s\n", opts.animal_file);
                 break;
             case 'l':
-                opts.log_file = malloc(strlen(optarg) + 1);
-                if(opts.log_file == NULL){
-                    perror("malloc");
-                    return false;
-                }
-                opts.log_free = true;
-                strcpy(opts.log_file, optarg);
+                opts.log_file = optarg;
                 LOG("log file is %s\n", opts.log_file);
                 break;
         }
@@ -320,15 +300,6 @@ int main(int argc, char *argv[]) {
         pthread_t thread;
         pthread_create(&thread, NULL, client_thread, (void *) (long) client_fd);
         pthread_detach(thread);
-    }
-    if(opts.adj_free){
-        free(opts.adj_file);
-    }
-    if(opts.animal_free){
-        free(opts.animal_file);
-    }
-    if(opts.log_free){
-        free(opts.log_file);
     }
     //Closing log_file before we exit the server.
     fclose(log_file);
