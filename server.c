@@ -211,6 +211,7 @@ int main(int argc, char *argv[]) {
     struct options opts;
     opts = default_options;
 
+    int port = atoi(argv[1]);
     int c;
     opterr = 0;
     while ((c = getopt(argc, argv, "s:a:n:l:")) != -1) {
@@ -230,8 +231,8 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.adj_free = true;
-                LOG("adj file is %s\n", opts.adj_file);
                 strcpy(opts.adj_file, optarg);
+                LOG("adj file is %s\n", opts.adj_file);
                 break;
             case 'n':
                 opts.animal_file = malloc(strlen(optarg) + 1);
@@ -240,8 +241,8 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.animal_free = true;
-                LOG("animal file is %s\n", opts.animal_file);
                 strcpy(opts.animal_file, optarg);
+                LOG("animal file is %s\n", opts.animal_file);
                 break;
             case 'l':
                 opts.log_file = malloc(strlen(optarg) + 1);
@@ -250,8 +251,8 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.log_free = true;
-                LOG("log file is %s\n", opts.log_file);
                 strcpy(opts.log_file, optarg);
+                LOG("log file is %s\n", opts.log_file);
                 break;
         }
     }
@@ -265,8 +266,6 @@ int main(int argc, char *argv[]) {
     task_init(opts.random_seed, opts.adj_file, opts.animal_file);
     task_generate(current_block);
     LOG("Current block: %s\n", current_block);
-
-    int port = atoi(argv[1]);
 
     // create a socket
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);

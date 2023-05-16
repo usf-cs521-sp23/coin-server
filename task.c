@@ -82,6 +82,7 @@ void task_init(int seed, char* adjective_file, char* animal_file)
 
 void task_generate(char buf[MAX_BLOCK_LEN])
 {
+    LOG("%s\n", "start of task_generate");
     sprintf(buf, "%s %s", adjectives[adj_idx++], animals[ani_idx++]);
     
     // roll over animals / adjectives on overflow
@@ -126,6 +127,7 @@ size_t read_file(char filename[], char ***array){
         strtok(buf, "\r\n");
         
         (*array)[i] = strdup(buf);
+        LOG("buf is: %s\n",buf);
         i++;
     }
     fclose(file);   
