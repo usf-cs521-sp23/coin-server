@@ -25,7 +25,7 @@
 FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty_mask = 0x00000FF;
+static uint32_t current_difficulty_mask = 0x0000FFFF;
 
 struct options {
     int random_seed;
