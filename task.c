@@ -127,7 +127,6 @@ size_t read_file(char filename[], char ***array){
         strtok(buf, "\r\n");
         
         (*array)[i] = strdup(buf);
-        LOG("buf is: %s\n",buf);
         i++;
     }
     fclose(file);   
