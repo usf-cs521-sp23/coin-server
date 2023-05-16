@@ -75,14 +75,13 @@ void task_init(int seed, char* adjective_file, char* animal_file)
     fisher_yates(animals, ani_sz);
 
     LOGP("Shuffling adjectives.\n");
-    fisher_yates(adjectives, ani_sz);
+    fisher_yates(adjectives, adj_sz);
 
     LOGP("Task generator ready.\n");
 }
 
 void task_generate(char buf[MAX_BLOCK_LEN])
 {
-    LOG("%s\n", "start of task_generate");
     sprintf(buf, "%s %s", adjectives[adj_idx++], animals[ani_idx++]);
     
     // roll over animals / adjectives on overflow
