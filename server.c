@@ -18,6 +18,8 @@
 #include "task.h"
 #include "sha1.h"
 
+static time_t task_start_time;
+
 //added LOG file variable
 #define LOG_FILE "task_log.txt"
 
@@ -49,7 +51,11 @@ uint32_t generate_difficulty_mask(void)
     return mask;
 }
 
-
+void generate_new_task() {
+    task_generate(current_block);
+    task_start_time = time(NULL);  // record the generation time
+    LOG("Generated new block: %s\n", current_block);
+}
 
 
 
@@ -171,7 +177,7 @@ void handle_solution(int fd, struct msg_solution *solution)
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
     if (verification->ok) {
-        task_generate(current_block);
+        generate_new_task();
         LOG("Generated new block: %s\n", current_block);
     }
 }
@@ -190,6 +196,10 @@ void *client_thread(void* client_fd) {
            LOGP("Disconnecting client\n");
             return NULL;
        }
+       if (difftime(time(NULL), task_start_time) > 24 * 60 * 60) {
+            generate_new_task();
+            LOG("Task unsolved for 24 hours. Generated new block: %s\n", current_block);
+        }
 
         switch (msg.header.msg_type) {
             case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
