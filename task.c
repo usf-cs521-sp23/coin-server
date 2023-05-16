@@ -33,10 +33,7 @@ static size_t ani_sz = 0;
  * structures by shuffling task components.
  */
 void task_init(int seed, char* adjective_file, char* animal_file)
-{
-    LOG("adjective file is %s\n", adjective_file);
-    LOG("animal file is %s\n", animal_file);
-    
+{   
     ani_sz = read_file(animal_file, &animals);
     adj_sz = read_file(adjective_file, &adjectives);
     
@@ -105,7 +102,6 @@ void fisher_yates(char *arr[], size_t sz)
 }
 
 size_t read_file(char filename[], char ***array){
-    LOG("filename is %s\n", filename);
     FILE *file = fopen(filename, "r");
     if ( file == NULL ){
         perror("fopen for file");
