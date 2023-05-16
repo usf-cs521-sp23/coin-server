@@ -25,7 +25,7 @@
 FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty = 0x0000FFF;
+static uint32_t current_difficulty = 0x00000FF;
 
 struct options {
     int random_seed;
@@ -217,6 +217,7 @@ int main(int argc, char *argv[]) {
         char *end;
             case 's':
                 opts.random_seed = (int) strtol(optarg, &end, 10);
+                LOG("seed is %d\n", opts.random_seed);
                 if (end == optarg) {
                     return 1;
                 }
@@ -228,6 +229,7 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.adj_free = true;
+                LOG("adj file is %s\n", opts.adj_file);
                 strcpy(opts.adj_file, optarg);
                 break;
             case 'n':
@@ -237,6 +239,7 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.animal_free = true;
+                LOG("animal file is %s\n", opts.animal_file);
                 strcpy(opts.animal_file, optarg);
                 break;
             case 'l':
@@ -246,17 +249,11 @@ int main(int argc, char *argv[]) {
                     return false;
                 }
                 opts.log_free = true;
+                LOG("log file is %s\n", opts.log_file);
                 strcpy(opts.log_file, optarg);
                 break;
         }
     }
-
-    LOG("seed is %d\n", opts.random_seed);
-    LOG("adj file is %s\n", opts.adj_file);
-    LOG("animal file is %s\n", opts.animal_file);
-    LOG("log file is %s\n", opts.log_file);
-    
-    //when to free and how???
     
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
