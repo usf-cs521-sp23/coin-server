@@ -1,7 +1,18 @@
 # coin-server
 
-This is "coin-server" for all the classmates in CS521 can mine for COIN521:)))        
-      
+This is "coin-server" for all the classmates in CS521 can mine for 521COIN:)))     
+
+
+## Purpose for building this
+
+To get more familiar with:    
+    
+1.   The pthread library and parallelization using threads   
+2.   The producer/consumer paradigm    
+3.   Network programming with sockets    
+4.   Taking performance measurements    
+
+ 
 ## Concept      
     
 When the client already connect to the server, the client will request for the task first.   
@@ -9,6 +20,11 @@ After that, server will create the task and send it back to client.
 Then, the client can work on "mining" and get the solution then send it back to server.     
 Server will verify the solution is correct or not and send the bool back to client.      
 If the verification is True, client can mine again!!!        
+
+BIG PIC:    
+![example3](https://github.com/weicheng112/coin-server/assets/108167692/2a3b6bb0-aea9-416e-a22a-335503463347)
+
+
 
 ## Steps
   
