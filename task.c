@@ -101,6 +101,17 @@ void fisher_yates(char *arr[], size_t sz)
     }
 }
 
+void destroy_array(char ***array, size_t size){
+    if(array == NULL){
+        return;
+    }
+    for(size_t i = 0; i < size; i++){
+        free(array[i]);
+        array[i] = NULL;
+    }
+    free(array);
+}
+
 size_t read_file(char filename[], char ***array){
     FILE *file = fopen(filename, "r");
     if ( file == NULL ){
@@ -124,6 +135,6 @@ size_t read_file(char filename[], char ***array){
         (*array)[i] = strdup(buf);
         i++;
     }
-    fclose(file);   
+    fclose(file);
     return i;
 }
