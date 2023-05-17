@@ -13,6 +13,7 @@
 #include <sys/types.h> 
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "common.h"
 #include "logger.h"
@@ -238,7 +239,25 @@ void *client_thread(void* client_fd) {
     return NULL;
 }
 
+/*
+* Handling SIGINT -> Tells the server to stop listening to connections and terminate ellegantly
+*/
+void sigint_handler(int signo) {
+    printf("SIGINT received. Goodbye...\n\n");
+    fclose(log_file);
+    task_destroy();
+    pthread_mutex_destroy(&lock);
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
+    // Handling signals
+    signal(SIGINT, sigint_handler);
+
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
 
     if (pthread_mutex_init(&lock, NULL) != 0) {
         printf("\n mutex init failed\n");
@@ -347,7 +366,6 @@ int main(int argc, char *argv[]) {
         pthread_detach(thread);
     }
     //Closing log_file before we exit the server.
-    fclose(log_file);
-    pthread_mutex_destroy(&lock);
+    // Add finishing commands to sigint handler function
     return 0; 
 }
