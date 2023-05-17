@@ -20,16 +20,10 @@
 #include "task.h"
 #include "sha1.h"
 
-//added LOG file variable
-#define LOG_FILE "task_log.txt"
-
-//added FILE pointer to log file
-FILE *log_file;
+static FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
-
-pthread_mutex_t lock;
 
 pthread_mutex_t lock;
 
@@ -40,7 +34,7 @@ struct options {
     char* log_file;
 };
 
-struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
+static struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
 
 union msg_wrapper current_task(void)
 {
@@ -49,6 +43,42 @@ union msg_wrapper current_task(void)
     strcpy(task->block, current_block);
     task->difficulty = current_difficulty_mask;
     return wrapper;
+}
+
+
+int hammingWeightOp(uint32_t n) {
+	int count = 0;
+	while(n) {
+		n = n&(n-1);
+		count++;
+	}
+	return 32 - count;
+}
+
+void increase_difficulty(void){
+    // should increase the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes + 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Increased difficulty to %08x\n", current_difficulty);
+}
+
+void decrease_difficulty(void){
+    // should decrease the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes - 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Decreased difficulty to %08x\n", current_difficulty);
 }
 
 void print_usage(char *prog_name)
@@ -320,6 +350,7 @@ int main(int argc, char *argv[]) {
             perror("accept");
             return 1;
         }
+
 
 	// find out their info (host name, port)
         char remote_host[INET_ADDRSTRLEN];

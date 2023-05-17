@@ -81,6 +81,8 @@ int read_msg(int fd, union msg_wrapper *msg)
     return header_sz;
   }
 
+
+
   void *payload_ptr = (char *)msg + sizeof(struct msg_header);
   ssize_t payload_sz = read_len(fd, payload_ptr, msg->header.msg_len - sizeof(struct msg_header));
   if (payload_sz <= 0) {
@@ -105,3 +107,5 @@ union msg_wrapper create_msg(enum MSG_TYPES type)
   wrapper.header.msg_len = msg_size(type);
   return wrapper;
 }
+
+// 
