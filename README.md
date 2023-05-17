@@ -15,9 +15,9 @@ If the verification is True, client can mine again!!!
 
 client --> request for task --> server    
 server --> give the task --> client        
--------------------    
+
 client working on it!!!        
--------------------    
+ 
   
 client --> send solutioin --> server    
 server do verify      
