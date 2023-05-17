@@ -25,12 +25,12 @@ int read_len(int fd, void *buf, size_t length)
 
     total += read_sz;
   }
-#ifdef DEBUG_ON
+  if (DEBUG_ON) {
   for (int i = 0; i < length; ++i) {
     fprintf(stderr, "%02X ", ((char *) buf)[i]);
   }
   fprintf(stderr, "\n");
-#endif
+  }
   return total;
 }
 
@@ -52,12 +52,12 @@ int write_len(const int fd, const void *buf, size_t length)
     total += write_sz;
   }
 
-#ifdef DEBUG_ON
+if(DEBUG_ON) {
   for (int i = 0; i < length; ++i) {
     fprintf(stderr, "%02X ", ((char *) buf)[i]);
   }
   fprintf(stderr, "\n");
-#endif
+}
 
   return total;
 }
@@ -69,6 +69,7 @@ size_t msg_size(enum MSG_TYPES type)
             case MSG_TASK: return sizeof(struct msg_task);
             case MSG_SOLUTION: return sizeof(struct msg_solution);
             case MSG_VERIFICATION: return sizeof(struct msg_verification);
+            case MSG_HEARTBEAT: return sizeof(struct msg_heartbeat);
             default: assert(false && "Message size not known!");
         }
 }
