@@ -21,16 +21,12 @@
 #include "sha1.h"
 
 static time_t task_start_time;
-
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask;
 
 static FILE *log_file;
 
-static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty_mask = 0x0000FFFF;
-
-pthread_mutex_t lock;
+static pthread_mutex_t lock;
 
 uint32_t generate_difficulty_mask(void)
 {
@@ -49,7 +45,7 @@ uint32_t generate_difficulty_mask(void)
         mask >>= 1; 
     }
 
-    current_difficulty = mask;
+    current_difficulty_mask = mask;
 
     return mask;
 }
@@ -93,26 +89,26 @@ void increase_difficulty(void){
     // should increase the difficulty by one 
     uint32_t difficulty_mask = 0;
 
-    int zeroes = hammingWeightOp(current_difficulty); 
+    int zeroes = hammingWeightOp(current_difficulty_mask); 
     int num = zeroes + 1; 
     int difficulty_mask_num = ((1 << (32 - num)) - 1);
     difficulty_mask = difficulty_mask_num;
 
-    current_difficulty = difficulty_mask;
-    LOG("Increased difficulty to %08x\n", current_difficulty);
+    current_difficulty_mask = difficulty_mask;
+    LOG("Increased difficulty to %08x\n", current_difficulty_mask);
 }
 
 void decrease_difficulty(void){
     // should decrease the difficulty by one 
     uint32_t difficulty_mask = 0;
 
-    int zeroes = hammingWeightOp(current_difficulty); 
+    int zeroes = hammingWeightOp(current_difficulty_mask); 
     int num = zeroes - 1; 
     int difficulty_mask_num = ((1 << (32 - num)) - 1);
     difficulty_mask = difficulty_mask_num;
 
-    current_difficulty = difficulty_mask;
-    LOG("Decreased difficulty to %08x\n", current_difficulty);
+    current_difficulty_mask = difficulty_mask;
+    LOG("Decreased difficulty to %08x\n", current_difficulty_mask);
 }
 
 void print_usage(char *prog_name)
@@ -152,7 +148,7 @@ void open_log_file(char* file_name) {
 void log_task(struct msg_solution *solution) {
     fprintf(
     log_file, 
-    "%s\t%d\t%lu\t%s\t%ld\n", 
+    "%s\t%u\t%lu\t%s\t%ld\n", 
             solution->block, 
             solution->difficulty, 
             solution->nonce, 

@@ -38,6 +38,7 @@ void task_init(int seed, char* adjective_file, char* animal_file)
     adj_sz = read_file(adjective_file, &adjectives);
     
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
+    assert(ani_sz != 0 && adj_sz != 0);
 
     if (seed == 0) {
         seed = time(NULL);
@@ -116,6 +117,7 @@ size_t read_file(char filename[], char ***array){
     FILE *file = fopen(filename, "r");
     if ( file == NULL ){
         perror("fopen for file");
+        return 0;
     }
 
     /* Determine the number of lines in the file */
