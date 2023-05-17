@@ -19,15 +19,10 @@
 #include "task.h"
 #include "sha1.h"
 
-//added LOG file variable
-#define LOG_FILE "task_log.txt"
-
-//added FILE pointer to log file
-FILE *log_file;
+static FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
-
 
 pthread_mutex_t lock;
 
@@ -38,8 +33,7 @@ struct options {
     char* log_file;
 };
 
-struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
-
+static struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
 
 union msg_wrapper current_task(void)
 {
