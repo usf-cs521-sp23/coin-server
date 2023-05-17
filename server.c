@@ -13,6 +13,7 @@
 #include <sys/types.h> 
 #include <unistd.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "common.h"
 #include "logger.h"
@@ -27,6 +28,7 @@ FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
+static bool terminate = false;
 
 struct options {
     int random_seed;
@@ -199,7 +201,20 @@ void *client_thread(void* client_fd) {
     return NULL;
 }
 
+/*
+* Handling SIGINT -> Tells the server to stop listening to connections and terminate ellegantly
+*/
+void sigint_handler(int signo) {
+    printf("SIGINT received. Goodbye...\n\n");
+    fclose(log_file);
+    task_destroy();
+    terminate = true;
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
+    // Handling signals
+    signal(SIGINT, sigint_handler);
 
     if (argc < 2) {
         print_usage(argv[0]);
@@ -273,6 +288,9 @@ int main(int argc, char *argv[]) {
     LOG("Listening on port %d\n", port);
 
     while (true) {
+        if (terminate == true) {
+            break;
+        }
         /* Outer loop: this keeps accepting connection */
         struct sockaddr_in client_addr = { 0 };
         socklen_t slen = sizeof(client_addr);
@@ -302,6 +320,6 @@ int main(int argc, char *argv[]) {
         pthread_detach(thread);
     }
     //Closing log_file before we exit the server.
-    fclose(log_file);
+    printf("HERE\n\n");
     return 0; 
 }

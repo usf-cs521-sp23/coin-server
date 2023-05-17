@@ -127,3 +127,21 @@ size_t read_file(char filename[], char ***array){
     fclose(file);   
     return i;
 }
+
+/*
+* Prevents memory leaks, freeing everything
+*/
+void task_destroy() {
+    // Free each index first
+    for (int i = 0; i < ani_sz; i++) {
+        free(animals[i]);
+    }
+    // Then free the whole array afterwards
+    free(animals);
+
+    // Same procedures
+    for (int i = 0; i < adj_sz; i++) {
+        free(adjectives[i]);
+    }
+    free(adjectives);
+}
