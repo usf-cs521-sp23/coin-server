@@ -7,11 +7,11 @@
 
 #include "task.h"
 
-#ifndef VERSION
-#define VERSION 1.0
+#ifndef DEBUG_ON
+#define DEBUG_ON 1
 #endif
 
-#define DEBUG_ON 1
+#define STR_LEN 24
 
 struct __attribute__((__packed__)) msg_header {
     uint64_t msg_len;
@@ -20,7 +20,7 @@ struct __attribute__((__packed__)) msg_header {
 
 struct __attribute__((__packed__)) msg_request_task {
     struct msg_header header;
-    char username[20];
+    char username[STR_LEN];
 };
 
 struct __attribute__((__packed__)) msg_task {
@@ -31,7 +31,7 @@ struct __attribute__((__packed__)) msg_task {
 
 struct __attribute__((__packed__)) msg_solution {
         struct msg_header header;
-        char username[20];
+        char username[STR_LEN];
         char block[MAX_BLOCK_LEN];
         uint32_t difficulty;
         uint64_t nonce;
@@ -45,7 +45,7 @@ struct __attribute__((__packed__)) msg_verification {
 
 struct __attribute__((__packed__)) msg_heartbeat {
         struct msg_header header;
-        char username[20];
+        char username[STR_LEN];
 };
 
 union __attribute__((__packed__)) msg_wrapper {

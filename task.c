@@ -32,10 +32,10 @@ static size_t ani_sz = 0;
  * Seeds the random number generator and then sets up task generation data
  * structures by shuffling task components.
  */
-void task_init(int seed)
-{
-    ani_sz = read_file("animals", &animals);
-    adj_sz = read_file("adjectives", &adjectives);
+void task_init(int seed, char* adjective_file, char* animal_file)
+{   
+    ani_sz = read_file(animal_file, &animals);
+    adj_sz = read_file(adjective_file, &adjectives);
     
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
 
@@ -72,8 +72,8 @@ void task_init(int seed)
     fisher_yates(animals, ani_sz);
 
     LOGP("Shuffling adjectives.\n");
-    fisher_yates(adjectives, ani_sz);
-    
+    fisher_yates(adjectives, adj_sz);
+
     LOGP("Task generator ready.\n");
 }
 
@@ -101,6 +101,17 @@ void fisher_yates(char *arr[], size_t sz)
     }
 }
 
+void destroy_array(char ***array, size_t size){
+    if(array == NULL){
+        return;
+    }
+    for(size_t i = 0; i < size; i++){
+        free(array[i]);
+        array[i] = NULL;
+    }
+    free(array);
+}
+
 size_t read_file(char filename[], char ***array){
     FILE *file = fopen(filename, "r");
     if ( file == NULL ){
@@ -124,6 +135,24 @@ size_t read_file(char filename[], char ***array){
         (*array)[i] = strdup(buf);
         i++;
     }
-    fclose(file);   
+    fclose(file);
     return i;
+}
+
+/*
+* Prevents memory leaks, freeing everything
+*/
+void task_destroy() {
+    // Free each index first
+    for (int i = 0; i < ani_sz; i++) {
+        free(animals[i]);
+    }
+    // Then free the whole array afterwards
+    free(animals);
+
+    // Same procedures
+    for (int i = 0; i < adj_sz; i++) {
+        free(adjectives[i]);
+    }
+    free(adjectives);
 }

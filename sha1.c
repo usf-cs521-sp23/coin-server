@@ -247,7 +247,7 @@ int sha1sum(uint8_t digest[SHA1_HASH_SIZE],
     return result;
 }
 
-void sha1tostring(char hash_str[41],
+void sha1tostring(char hash_str[SHA1_STR_SIZE],
         uint8_t digest[SHA1_HASH_SIZE])
 {
     for(int i = 0; i < SHA1_HASH_SIZE ; ++i) {

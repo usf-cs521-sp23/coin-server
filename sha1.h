@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #define SHA1_HASH_SIZE 20
+#define SHA1_STR_SIZE 41
 
 /**
  * Defines various SHA-1 status codes.
@@ -39,7 +40,7 @@ int sha1sum(uint8_t digest[SHA1_HASH_SIZE],
  *        null terminated.
  * @param digest The SHA-1 checksum to convert (in raw byte form)
  */
-void sha1tostring(char hash_str[41],
+void sha1tostring(char hash_str[SHA1_STR_SIZE],
         uint8_t digest[SHA1_HASH_SIZE]);
 
 #endif
