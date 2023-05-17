@@ -11,6 +11,8 @@
 #define DEBUG_ON 1
 #endif
 
+#define STR_LEN 24
+
 struct __attribute__((__packed__)) msg_header {
     uint64_t msg_len;
     uint16_t msg_type;
@@ -18,7 +20,7 @@ struct __attribute__((__packed__)) msg_header {
 
 struct __attribute__((__packed__)) msg_request_task {
     struct msg_header header;
-    char username[20];
+    char username[STR_LEN];
 };
 
 struct __attribute__((__packed__)) msg_task {
@@ -29,7 +31,7 @@ struct __attribute__((__packed__)) msg_task {
 
 struct __attribute__((__packed__)) msg_solution {
         struct msg_header header;
-        char username[20];
+        char username[STR_LEN];
         char block[MAX_BLOCK_LEN];
         uint32_t difficulty;
         uint64_t nonce;
@@ -43,7 +45,7 @@ struct __attribute__((__packed__)) msg_verification {
 
 struct __attribute__((__packed__)) msg_heartbeat {
         struct msg_header header;
-        char username[20];
+        char username[STR_LEN];
 };
 
 union __attribute__((__packed__)) msg_wrapper {
