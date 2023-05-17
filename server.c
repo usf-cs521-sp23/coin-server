@@ -28,7 +28,10 @@ FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
-static bool terminate = false;
+
+pthread_mutex_t lock;
+
+pthread_mutex_t lock;
 
 struct options {
     int random_seed;
@@ -109,7 +112,7 @@ bool verify_solution(struct msg_solution *solution)
 
     snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
-    char hash_string[41];
+    char hash_string[SHA1_STR_SIZE];
     sha1tostring(hash_string, digest);
     LOG("SHA1sum: '%s' => '%s'\n", buf, hash_string);
     free(buf);
@@ -159,16 +162,21 @@ void handle_solution(int fd, struct msg_solution *solution)
         }
         return;
     }
-
+    
+    pthread_mutex_lock(&lock); // lock before verification so that it is only executed by one thread at a time
     verification->ok = verify_solution(solution);
+
+    if (verification->ok) {
+        task_generate(current_block); // generate new task if necessary
+        LOG("Generated new block: %s\n", current_block);
+    }
+
+    pthread_mutex_unlock(&lock); // unlock after verification
+
     strcpy(verification->error_description, "Verified SHA-1 hash");
     write_msg(fd, &wrapper);
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
-    if (verification->ok) {
-        task_generate(current_block);
-        LOG("Generated new block: %s\n", current_block);
-    }
 }
 
 void *client_thread(void* client_fd) {
@@ -208,13 +216,23 @@ void sigint_handler(int signo) {
     printf("SIGINT received. Goodbye...\n\n");
     fclose(log_file);
     task_destroy();
-    terminate = true;
+    pthread_mutex_destroy(&lock);
     exit(0);
 }
 
 int main(int argc, char *argv[]) {
     // Handling signals
     signal(SIGINT, sigint_handler);
+
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
+
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
 
     if (argc < 2) {
         print_usage(argv[0]);
@@ -288,9 +306,6 @@ int main(int argc, char *argv[]) {
     LOG("Listening on port %d\n", port);
 
     while (true) {
-        if (terminate == true) {
-            break;
-        }
         /* Outer loop: this keeps accepting connection */
         struct sockaddr_in client_addr = { 0 };
         socklen_t slen = sizeof(client_addr);
@@ -320,6 +335,6 @@ int main(int argc, char *argv[]) {
         pthread_detach(thread);
     }
     //Closing log_file before we exit the server.
-    printf("HERE\n\n");
+    // Add finishing commands to sigint handler function
     return 0; 
 }
