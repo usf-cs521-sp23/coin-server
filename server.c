@@ -44,6 +44,42 @@ union msg_wrapper current_task(void)
     return wrapper;
 }
 
+
+int hammingWeightOp(uint32_t n) {
+	int count = 0;
+	while(n) {
+		n = n&(n-1);
+		count++;
+	}
+	return 32 - count;
+}
+
+void increase_difficulty(void){
+    // should increase the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes + 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Increased difficulty to %08x\n", current_difficulty);
+}
+
+void decrease_difficulty(void){
+    // should decrease the difficulty by one 
+    uint32_t difficulty_mask = 0;
+
+    int zeroes = hammingWeightOp(current_difficulty); 
+    int num = zeroes - 1; 
+    int difficulty_mask_num = ((1 << (32 - num)) - 1);
+    difficulty_mask = difficulty_mask_num;
+
+    current_difficulty = difficulty_mask;
+    LOG("Decreased difficulty to %08x\n", current_difficulty);
+}
+
 void print_usage(char *prog_name)
 {
     printf("Usage: %s port [-s seed] [-a adjective_file] [-n animal_file] [-l log_file]" , prog_name);
@@ -295,6 +331,7 @@ int main(int argc, char *argv[]) {
             perror("accept");
             return 1;
         }
+
 
 	// find out their info (host name, port)
         char remote_host[INET_ADDRSTRLEN];
