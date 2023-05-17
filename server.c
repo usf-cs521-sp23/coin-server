@@ -20,12 +20,46 @@
 #include "task.h"
 #include "sha1.h"
 
+static time_t task_start_time;
+
+static char current_block[MAX_BLOCK_LEN];
+static uint32_t current_difficulty_mask;
+
 static FILE *log_file;
 
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask = 0x0000FFFF;
 
 pthread_mutex_t lock;
+
+uint32_t generate_difficulty_mask(void)
+{
+    srand(time(NULL));
+    uint8_t leading_zeros = rand() % 25 + 8; // Combine Vlidation and random task difficulty
+    //range from 8 to 32 0's (both inclusive)
+
+    if (leading_zeros == 32) {
+        return 0; // handle cornor case 
+    }
+
+    uint32_t mask = 0xFFFFFFFF;
+
+    // shit 0's in binary version. 
+    while (__builtin_clz(mask) > (32 - leading_zeros)) {
+        mask >>= 1; 
+    }
+
+    current_difficulty = mask;
+
+    return mask;
+}
+
+void generate_new_task() {
+    task_generate(current_block);
+    task_start_time = time(NULL);  // record the generation time
+    LOG("Generated new block: %s\n", current_block);
+}
+
 
 struct options {
     int random_seed;
@@ -41,7 +75,7 @@ union msg_wrapper current_task(void)
     union msg_wrapper wrapper = create_msg(MSG_TASK);
     struct msg_task *task = &wrapper.task;
     strcpy(task->block, current_block);
-    task->difficulty = current_difficulty_mask;
+    task->difficulty = generate_difficulty_mask();
     return wrapper;
 }
 
@@ -158,7 +192,7 @@ bool verify_solution(struct msg_solution *solution)
     if ((hash_front & current_difficulty_mask) == hash_front) {
         log_task(solution);
     }
-    
+
     return (hash_front & current_difficulty_mask) == hash_front;
 }
 
@@ -207,6 +241,10 @@ void handle_solution(int fd, struct msg_solution *solution)
     write_msg(fd, &wrapper);
     LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
     
+    if (verification->ok) {
+        generate_new_task();
+        LOG("Generated new block: %s\n", current_block);
+    }
 }
 
 void *client_thread(void* client_fd) {
@@ -223,6 +261,10 @@ void *client_thread(void* client_fd) {
            LOGP("Disconnecting client\n");
             return NULL;
        }
+       if (difftime(time(NULL), task_start_time) > 24 * 60 * 60) {
+            generate_new_task();
+            LOG("Task unsolved for 24 hours. Generated new block: %s\n", current_block);
+        }
 
         switch (msg.header.msg_type) {
             case MSG_REQUEST_TASK: handle_request_task(fd, (struct msg_request_task *) &msg.request_task);
