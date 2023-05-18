@@ -109,7 +109,7 @@ union msg_wrapper current_task(void)
     struct msg_task *task = &wrapper.task;
     task->ok = true;
     strcpy(task->block, current_block);
-    task->difficulty = current_difficulty_mask;
+    task->difficulty_mask = current_difficulty_mask;
     return wrapper;
 }
 
@@ -221,7 +221,7 @@ bool verify_solution(struct msg_solution *solution)
 
 void handle_solution(int fd, struct msg_solution *solution)
 {
-    LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty, solution->nonce);
+    LOG("[SOLUTION SUBMITTED] User: %s, block: %s, difficulty: %u, NONCE: %lu\n", solution->username, solution->block, solution->difficulty_mask, solution->nonce);
     
     union msg_wrapper wrapper = create_msg(MSG_VERIFICATION);
     struct msg_verification *verification = &wrapper.verification;
@@ -236,7 +236,7 @@ void handle_solution(int fd, struct msg_solution *solution)
         return;
     }
     
-    if (current_difficulty_mask !=  solution->difficulty) {
+    if (current_difficulty_mask !=  solution->difficulty_mask) {
         strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
         write_msg(fd, &wrapper);
         return;

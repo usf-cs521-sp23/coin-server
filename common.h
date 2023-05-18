@@ -27,14 +27,14 @@ struct __attribute__((__packed__)) msg_task {
         struct msg_header header;
         bool ok;
         char block[MAX_BLOCK_LEN];
-        uint8_t difficulty;
+        uint32_t difficulty_mask;
 };
 
 struct __attribute__((__packed__)) msg_solution {
         struct msg_header header;
         char username[MAX_USER_LEN];
         char block[MAX_BLOCK_LEN];
-        uint8_t difficulty;
+        uint32_t difficulty_mask;
         uint64_t nonce;
 };
 

@@ -96,7 +96,7 @@ void task_log_add(struct msg_solution *solution) {
     log_file, 
     "%s\t%u\t%lu\t%s\t%ld\n", 
             solution->block, 
-            solution->difficulty, 
+            solution->difficulty_mask, 
             solution->nonce, 
             solution->username, 
             time(NULL));
