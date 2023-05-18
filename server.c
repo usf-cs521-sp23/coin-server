@@ -20,42 +20,11 @@
 #include "task.h"
 #include "sha1.h"
 
-static time_t task_start_time;
+static time_t task_start_time = 0;
 static char current_block[MAX_BLOCK_LEN];
 static uint32_t current_difficulty_mask;
 
-static FILE *log_file;
-
 static pthread_mutex_t lock;
-
-uint32_t generate_difficulty_mask(void)
-{
-    srand(time(NULL));
-    uint8_t leading_zeros = rand() % 25 + 8; // Combine Vlidation and random task difficulty
-    //range from 8 to 32 0's (both inclusive)
-
-    if (leading_zeros == 32) {
-        return 0; // handle cornor case 
-    }
-
-    uint32_t mask = 0xFFFFFFFF;
-
-    // shit 0's in binary version. 
-    while (__builtin_clz(mask) > (32 - leading_zeros)) {
-        mask >>= 1; 
-    }
-
-    current_difficulty_mask = mask;
-
-    return mask;
-}
-
-void generate_new_task() {
-    task_generate(current_block);
-    task_start_time = time(NULL);  // record the generation time
-    LOG("Generated new block: %s\n", current_block);
-}
-
 
 struct options {
     int random_seed;
@@ -66,49 +35,82 @@ struct options {
 
 static struct options default_options = {0, "adjectives", "animals", "task_log.txt"};
 
+struct user {
+    char username[MAX_USER_LEN];
+    time_t heartbeat_timestamp;
+    struct user *next;
+};
+
+struct user *user_list = NULL;
+
+uint32_t generate_mask(int zeros)
+{
+    if (zeros == 32) {
+        return 0;
+    }
+
+    return 0xFFFFFFFF >> zeros;
+}
+
+uint32_t increase_difficulty_mask(uint32_t mask)
+{
+    if (mask == 0x01) {
+        return 0;
+    }
+    
+    return (mask >> 1);
+}
+
+uint32_t decrease_difficulty_mask(uint32_t mask)
+{
+    return (mask << 1) | 0x01;
+}
+
+
+void sprint_binary32(uint32_t num, char buf[33]) {
+    int i, j;
+    for (i = 31, j = 0; i >= 0; --i, j++) {
+        uint32_t position = (unsigned int) 1 << i;
+        buf[j] = ((num & position) == position) ? '1' : '0';
+    }
+    buf[32] = '\0';
+}
+
+void generate_new_task() {
+    time_t now = time(NULL);
+    uint8_t leading_zeros = __builtin_clz(current_difficulty_mask);
+    if (task_start_time == 0) {
+      leading_zeros = 1 + rand() % 25;
+      current_difficulty_mask = generate_mask(leading_zeros);
+    } else {
+      double diff = difftime(now, task_start_time);
+      LOG("Time to find solution = %f\n", diff);
+      if (diff < 600.0) { // 10 min?
+        current_difficulty_mask =
+            increase_difficulty_mask(current_difficulty_mask);
+      } else {
+        current_difficulty_mask =
+            decrease_difficulty_mask(current_difficulty_mask);
+      }
+      LOG("Difficulty change: %u -> %u\n", leading_zeros, __builtin_clz(current_difficulty_mask));
+    }
+
+    task_generate(current_block);
+    task_start_time = now;
+    LOG("Generated new block: %s\n", current_block);
+    char mask_buf[33];
+    sprint_binary32(current_difficulty_mask, mask_buf);
+    LOG("Difficulty mask: %s (%u leading zeros)\n", mask_buf, __builtin_clz(leading_zeros));
+}
+
 union msg_wrapper current_task(void)
 {
     union msg_wrapper wrapper = create_msg(MSG_TASK);
     struct msg_task *task = &wrapper.task;
+    task->ok = true;
     strcpy(task->block, current_block);
-    task->difficulty = generate_difficulty_mask();
+    task->difficulty = current_difficulty_mask;
     return wrapper;
-}
-
-
-int hammingWeightOp(uint32_t n) {
-	int count = 0;
-	while(n) {
-		n = n&(n-1);
-		count++;
-	}
-	return 32 - count;
-}
-
-void increase_difficulty(void){
-    // should increase the difficulty by one 
-    uint32_t difficulty_mask = 0;
-
-    int zeroes = hammingWeightOp(current_difficulty_mask); 
-    int num = zeroes + 1; 
-    int difficulty_mask_num = ((1 << (32 - num)) - 1);
-    difficulty_mask = difficulty_mask_num;
-
-    current_difficulty_mask = difficulty_mask;
-    LOG("Increased difficulty to %08x\n", current_difficulty_mask);
-}
-
-void decrease_difficulty(void){
-    // should decrease the difficulty by one 
-    uint32_t difficulty_mask = 0;
-
-    int zeroes = hammingWeightOp(current_difficulty_mask); 
-    int num = zeroes - 1; 
-    int difficulty_mask_num = ((1 << (32 - num)) - 1);
-    difficulty_mask = difficulty_mask_num;
-
-    current_difficulty_mask = difficulty_mask;
-    LOG("Decreased difficulty to %08x\n", current_difficulty_mask);
 }
 
 void print_usage(char *prog_name)
@@ -123,9 +125,45 @@ void print_usage(char *prog_name)
     printf("\n");
 }
 
+struct user *find_user(char *username)
+{
+    struct user *curr_user = user_list;
+    while (curr_user != NULL) {
+      if (strcmp(curr_user->username, username) == 0) {
+        return curr_user;
+      }
+      curr_user = curr_user->next;
+    }
+    return NULL;
+    
+}
+
+struct user *add_user(char *username)
+{
+    struct user *u = calloc(1, sizeof(struct user));
+    strncpy(u->username, username, MAX_USER_LEN - 1);
+    u->heartbeat_timestamp = 0;
+    u->next = user_list;
+    user_list = u;
+    return u;
+}
+
+bool validate_heartbeat(struct user *u)
+{
+    return (difftime(time(NULL), u->heartbeat_timestamp) >= 10);
+}
+
 void handle_heartbeat(int fd, struct msg_heartbeat *hb)
 {
     LOG("[HEARTBEAT] %s\n", hb->username);
+    struct user *user = find_user(hb->username);
+    if (user == NULL || validate_heartbeat(user) == false) {
+        union msg_wrapper wrapper = create_msg(MSG_TASK);
+        wrapper.task.ok = false;
+        write_msg(fd, &wrapper);
+        return;
+    }
+    user->heartbeat_timestamp = time(NULL);
     union msg_wrapper wrapper = current_task();
     write_msg(fd, &wrapper);
 }
@@ -133,30 +171,23 @@ void handle_heartbeat(int fd, struct msg_heartbeat *hb)
 void handle_request_task(int fd, struct msg_request_task *req)
 {
     LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty_mask);
+    struct user *user = find_user(req->username);
+    if (user == NULL) {
+        LOG("Adding new user account: %s\n", req->username);
+        user = add_user(req->username);
+    }
+
+    if (validate_heartbeat(user) == false) {
+        // User has requested a task too soon, must wait 10 seconds
+        union msg_wrapper wrapper = create_msg(MSG_TASK);
+        wrapper.task.ok = false;
+        write_msg(fd, &wrapper);
+        return;
+    }
+
+    user->heartbeat_timestamp = time(NULL);
     union msg_wrapper wrapper = current_task();
     write_msg(fd, &wrapper);
-}
-
-void open_log_file(char* file_name) {
-    //Try to open the log file (create it if it doesn't already exist)
-    log_file = fopen(file_name, "a+");
-    if (log_file == NULL) {
-        fprintf(stderr, "Error opening task log file\n");
-    }
-}
-
-void log_task(struct msg_solution *solution) {
-    fprintf(
-    log_file, 
-    "%s\t%u\t%lu\t%s\t%ld\n", 
-            solution->block, 
-            solution->difficulty, 
-            solution->nonce, 
-            solution->username, 
-            time(NULL));
-
-    //we fflush the file to ensure the write is on the disk after each update
-    fflush(log_file);
 }
 
 bool verify_solution(struct msg_solution *solution)
@@ -184,11 +215,7 @@ bool verify_solution(struct msg_solution *solution)
     hash_front |= digest[2] << 8;
     hash_front |= digest[3];
 
-    /* Check to see if we've found a solution to our block and add it to the log file */
-    if ((hash_front & current_difficulty_mask) == hash_front) {
-        log_task(solution);
-    }
-
+    /* Check to see if we've found a solution to our block */
     return (hash_front & current_difficulty_mask) == hash_front;
 }
 
@@ -205,42 +232,42 @@ void handle_solution(int fd, struct msg_solution *solution)
     if (strcmp(current_block, solution->block) != 0)
     {
         strcpy(verification->error_description, "Block does not match current block on server");
-        
-        //error occurs during the write, return -1
-        if(write_msg(fd, &wrapper) == -1) {
-            perror("socket write");
-        }
+        write_msg(fd, &wrapper);
         return;
     }
     
     if (current_difficulty_mask !=  solution->difficulty) {
         strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
         write_msg(fd, &wrapper);
-        //error occurs during the write, return -1
-        if(write_msg(fd, &wrapper) == -1) {
-            perror("socket write");
-        }
         return;
     }
-    
+
+    struct user *u = find_user(solution->username);
+    if (u == NULL) {
+        strcpy(verification->error_description, "Unknown user");
+        write_msg(fd, &wrapper);
+        return;
+    }
+
     pthread_mutex_lock(&lock); // lock before verification so that it is only executed by one thread at a time
     verification->ok = verify_solution(solution);
 
+    LOG("[SOLUTION by %s %s!]\n", solution->username, verification->ok ? "ACCEPTED" : "REJECTED");
+
     if (verification->ok) {
-        task_generate(current_block); // generate new task if necessary
+        // Update the user's heartbeat timestamp so they can request a new task
+        // immediately after receiving the notification
+        u->heartbeat_timestamp = 0;
+
+        task_log_add(solution);
+        generate_new_task();
         LOG("Generated new block: %s\n", current_block);
     }
-
+    
     pthread_mutex_unlock(&lock); // unlock after verification
 
     strcpy(verification->error_description, "Verified SHA-1 hash");
     write_msg(fd, &wrapper);
-    LOG("[SOLUTION %s!]\n", verification->ok ? "ACCEPTED" : "REJECTED");
-    
-    if (verification->ok) {
-        generate_new_task();
-        LOG("Generated new block: %s\n", current_block);
-    }
 }
 
 void *client_thread(void* client_fd) {
@@ -282,7 +309,7 @@ void *client_thread(void* client_fd) {
 */
 void sigint_handler(int signo) {
     printf("SIGINT received. Goodbye...\n\n");
-    fclose(log_file);
+    task_log_close();
     task_destroy();
     pthread_mutex_destroy(&lock);
     exit(0);
@@ -341,12 +368,16 @@ int main(int argc, char *argv[]) {
     LOG("Starting coin-server version %.1f...\n", VERSION);
     LOG("%s", "(c) 2023 CS 521 Students\n");
 
-    //open the log_file when the server starts up
-    open_log_file(opts.log_file);
+    if (opts.random_seed == 0) {
+        opts.random_seed = time(NULL);
+    }
+    LOG("Random seed: %d\n", opts.random_seed);
+    srand(opts.random_seed);
     
-    task_init(opts.random_seed, opts.adj_file, opts.animal_file);
-    task_generate(current_block);
-    LOG("Current block: %s\n", current_block);
+   
+    task_init(opts.adj_file, opts.animal_file);
+    generate_new_task();
+    task_log_open(opts.log_file);
 
     // create a socket
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);

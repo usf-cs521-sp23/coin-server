@@ -25,6 +25,7 @@ struct __attribute__((__packed__)) msg_request_task {
 
 struct __attribute__((__packed__)) msg_task {
         struct msg_header header;
+        bool ok;
         char block[MAX_BLOCK_LEN];
         uint32_t difficulty;
 };
