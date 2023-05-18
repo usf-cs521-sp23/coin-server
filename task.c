@@ -1,12 +1,4 @@
-/*
- * Change Log:
- * e.g. [DD/MM/YY Writer]: Description of another change
- * 
- * [05/07/23 InhwaS]: issue#2 split the "animals" array and the "adjectives" array into separate files
- * 
- */
 #include "task.h"
-#include "logger.h"
 
 #include <assert.h>
 #include <stddef.h>
@@ -15,8 +7,13 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "common.h"
+#include "logger.h"
+
 static size_t ani_idx = 0;
 static size_t adj_idx = 0;
+
+static FILE *log_file;
 
 void fisher_yates(char *arr[], size_t sz);
 
@@ -32,19 +29,13 @@ static size_t ani_sz = 0;
  * Seeds the random number generator and then sets up task generation data
  * structures by shuffling task components.
  */
-void task_init(int seed, char* adjective_file, char* animal_file)
+void task_init(char* adjective_file, char* animal_file)
 {   
     ani_sz = read_file(animal_file, &animals);
     adj_sz = read_file(adjective_file, &adjectives);
     
     LOG("Initializing task generator. %zu animals, %zu adjectives (%zu x %zu = %zu)\n", ani_sz, adj_sz, ani_sz, adj_sz, adj_sz * ani_sz);
     assert(ani_sz != 0 && adj_sz != 0);
-
-    if (seed == 0) {
-        seed = time(NULL);
-    }
-    LOG("Random seed: %d\n", seed);
-    srand(seed);
 
     size_t max_ani_len = 0;
     for (int i = 0; i < ani_sz; ++i)
@@ -90,6 +81,33 @@ void task_generate(char buf[MAX_BLOCK_LEN])
     if (ani_idx == ani_sz) {
         ani_idx = 0;
     }
+}
+
+void task_log_open(char* file_name) {
+    //Try to open the log file (create it if it doesn't already exist)
+    log_file = fopen(file_name, "a+");
+    if (log_file == NULL) {
+        fprintf(stderr, "Error opening task log file\n");
+    }
+}
+
+void task_log_add(struct msg_solution *solution) {
+    fprintf(
+    log_file, 
+    "%s\t%u\t%lu\t%s\t%ld\n", 
+            solution->block, 
+            solution->difficulty, 
+            solution->nonce, 
+            solution->username, 
+            time(NULL));
+
+    //we fflush the file to ensure the write is on the disk after each update
+    fflush(log_file);
+}
+
+void task_log_close(void)
+{
+    fclose(log_file);
 }
 
 void fisher_yates(char *arr[], size_t sz)
