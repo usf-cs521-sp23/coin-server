@@ -148,14 +148,14 @@ struct user *add_user(char *username)
     return u;
 }
 
-void remove_user(char *username) {
+struct user *remove_user(char *username) {
     struct user *curr_user = user_list;
     
     // If head 
     if (strcmp(curr_user->username, username) == 0) {
         user_list = user_list->next;
-        free(curr_user);
-        return;
+        
+        return curr_user;
     }
     // Else
     curr_user = curr_user->next;
@@ -163,12 +163,13 @@ void remove_user(char *username) {
     while (curr_user != NULL) {
         if (strcmp(curr_user->username, username) == 0) {
             prev_user->next = curr_user->next;
-            free(curr_user);
-            return;
+            
+            return curr_user;
         }
-        prev_user = curr_user;
+        prev_user->next = curr_user;
         curr_user = curr_user->next;
     }
+    return NULL;
 }
 
 bool validate_heartbeat(struct user *u)
@@ -294,13 +295,13 @@ void handle_solution(int fd, struct msg_solution *solution)
 }
 
 void handle_goodbye(int fd, struct msg_goodbye *goodbye) {
-    struct user *user = find_user(goodbye->username);
-    if (user == NULL || validate_heartbeat(user) == false) {
+    struct user *user = remove_user(goodbye->username);
+    if (user == NULL) {
         // Unknown user, not sending back anything
         return;
     }
     LOG("%s is disconnecting, bye!\n", user->username);
-    remove_user(user->username);
+    free(user);
     //
     // Send back their leaderboard standing
     /*
