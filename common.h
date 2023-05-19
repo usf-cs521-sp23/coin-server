@@ -68,6 +68,8 @@ union __attribute__((__packed__)) msg_wrapper {
         struct msg_solution solution;
         struct msg_verification verification;
         struct msg_heartbeat heartbeat;
+        struct msg_heartbeat_reply heartbeat_reply;
+        struct msg_goodbye goodbye;
 };
 
 enum MSG_TYPES {
