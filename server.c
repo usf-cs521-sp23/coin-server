@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h> 
+#include <time.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <signal.h>
@@ -20,9 +21,9 @@
 #include "task.h"
 #include "sha1.h"
 
+static union msg_wrapper current_task_wrapper;
+struct msg_task *current_task = &current_task_wrapper.task;
 static time_t task_start_time = 0;
-static char current_block[MAX_BLOCK_LEN];
-static uint32_t current_difficulty_mask;
 
 static pthread_mutex_t lock;
 
@@ -38,6 +39,7 @@ static struct options default_options = {0, "adjectives", "animals", "task_log.t
 struct user {
     char username[MAX_USER_LEN];
     time_t heartbeat_timestamp;
+    time_t request_timestamp;
     struct user *next;
 };
 
@@ -78,39 +80,30 @@ void sprint_binary32(uint32_t num, char buf[33]) {
 
 void generate_new_task() {
     time_t now = time(NULL);
-    uint8_t leading_zeros = __builtin_clz(current_difficulty_mask);
+    uint8_t leading_zeros = __builtin_clz(current_task->difficulty_mask);
     if (task_start_time == 0) {
       leading_zeros = 1 + rand() % 25;
-      current_difficulty_mask = generate_mask(leading_zeros);
+      current_task->difficulty_mask = generate_mask(leading_zeros);
     } else {
       double diff = difftime(now, task_start_time);
       LOG("Time to find solution = %f\n", diff);
       if (diff < 600.0) { // 10 min?
-        current_difficulty_mask =
-            increase_difficulty_mask(current_difficulty_mask);
+        current_task->difficulty_mask =
+            increase_difficulty_mask(current_task->difficulty_mask);
       } else {
-        current_difficulty_mask =
-            decrease_difficulty_mask(current_difficulty_mask);
+        current_task->difficulty_mask =
+            decrease_difficulty_mask(current_task->difficulty_mask);
       }
-      LOG("Difficulty change: %u -> %u\n", leading_zeros, __builtin_clz(current_difficulty_mask));
+      LOG("Difficulty change: %u -> %u\n", leading_zeros, __builtin_clz(current_task->difficulty_mask));
     }
 
-    task_generate(current_block);
+    task_generate(current_task->block);
     task_start_time = now;
-    LOG("Generated new block: %s\n", current_block);
+    current_task->sequence_num = current_task->sequence_num + 1;
+    LOG("Generated new block [%lu]: %s\n", current_task->sequence_num, current_task->block);
     char mask_buf[33];
-    sprint_binary32(current_difficulty_mask, mask_buf);
-    LOG("Difficulty mask: %s (%u leading zeros)\n", mask_buf, __builtin_clz(leading_zeros));
-}
-
-union msg_wrapper current_task(void)
-{
-    union msg_wrapper wrapper = create_msg(MSG_TASK);
-    struct msg_task *task = &wrapper.task;
-    task->ok = true;
-    strcpy(task->block, current_block);
-    task->difficulty_mask = current_difficulty_mask;
-    return wrapper;
+    sprint_binary32(current_task->difficulty_mask, mask_buf);
+    LOG("Difficulty mask: %s (%u leading zeros)\n", mask_buf, __builtin_clz(current_task->difficulty_mask));
 }
 
 void print_usage(char *prog_name)
@@ -155,53 +148,56 @@ bool validate_heartbeat(struct user *u)
 
 void handle_heartbeat(int fd, struct msg_heartbeat *hb)
 {
-    LOG("[HEARTBEAT] %s\n", hb->username);
+    LOG("[HEARTBEAT] User: %s\n", hb->username);
+    union msg_wrapper wrapper = create_msg(MSG_HEARTBEAT_REPLY);
+
     struct user *user = find_user(hb->username);
     if (user == NULL || validate_heartbeat(user) == false) {
-        union msg_wrapper wrapper = create_msg(MSG_TASK);
-        wrapper.task.ok = false;
+        wrapper.heartbeat_reply.sequence_num = 0;
         write_msg(fd, &wrapper);
         return;
     }
+
     user->heartbeat_timestamp = time(NULL);
-    union msg_wrapper wrapper = current_task();
+
+    wrapper.heartbeat_reply.sequence_num = current_task->sequence_num;
     write_msg(fd, &wrapper);
 }
 
 void handle_request_task(int fd, struct msg_request_task *req)
 {
-    LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty_mask);
+    //LOG("[TASK REQUEST] User: %s, block: %s, difficulty: %u\n", req->username, current_block, current_difficulty_mask);
+    LOG("[TASK REQUEST] User: %s\n", req->username);
     struct user *user = find_user(req->username);
     if (user == NULL) {
         LOG("Adding new user account: %s\n", req->username);
         user = add_user(req->username);
     }
 
-    if (validate_heartbeat(user) == false) {
+    if (difftime(time(NULL), user->request_timestamp) < 10) {
         // User has requested a task too soon, must wait 10 seconds
         union msg_wrapper wrapper = create_msg(MSG_TASK);
-        wrapper.task.ok = false;
+        wrapper.task.sequence_num = 0;
         write_msg(fd, &wrapper);
         return;
     }
 
-    user->heartbeat_timestamp = time(NULL);
-    union msg_wrapper wrapper = current_task();
-    write_msg(fd, &wrapper);
+    user->request_timestamp = time(NULL);
+    write_msg(fd, &current_task_wrapper);
 }
 
 bool verify_solution(struct msg_solution *solution)
 {
     uint8_t digest[SHA1_HASH_SIZE];
     const char *check_format = "%s%lu";
-    ssize_t buf_sz = snprintf(NULL, 0, check_format, current_block, solution->nonce);
+    ssize_t buf_sz = snprintf(NULL, 0, check_format, current_task->block, solution->nonce);
     char *buf = malloc(buf_sz + 1);
     if(buf == NULL){
         perror("malloc");
         return false;
     }
 
-    snprintf(buf, buf_sz + 1, check_format, current_block, solution->nonce);
+    snprintf(buf, buf_sz + 1, check_format, current_task->block, solution->nonce);
     sha1sum(digest, (uint8_t *) buf, buf_sz);
     char hash_string[SHA1_STR_SIZE];
     sha1tostring(hash_string, digest);
@@ -216,7 +212,7 @@ bool verify_solution(struct msg_solution *solution)
     hash_front |= digest[3];
 
     /* Check to see if we've found a solution to our block */
-    return (hash_front & current_difficulty_mask) == hash_front;
+    return (hash_front & current_task->difficulty_mask) == hash_front;
 }
 
 void handle_solution(int fd, struct msg_solution *solution)
@@ -228,15 +224,21 @@ void handle_solution(int fd, struct msg_solution *solution)
     verification->ok = false; // assume the solution is not valid by default
 
     /* We could directly verify the solution, but let's make sure it's the same
-     * block and difficulty first: */
-    if (strcmp(current_block, solution->block) != 0)
+     * sequence number, block, and difficulty first: */
+    if (current_task->sequence_num != solution->sequence_num) {
+        strcpy(verification->error_description, "Sequence number mismatch");
+        write_msg(fd, &wrapper);
+        return;
+    }
+
+    if (strcmp(current_task->block, solution->block) != 0)
     {
         strcpy(verification->error_description, "Block does not match current block on server");
         write_msg(fd, &wrapper);
         return;
     }
     
-    if (current_difficulty_mask !=  solution->difficulty_mask) {
+    if (current_task->difficulty_mask !=  solution->difficulty_mask) {
         strcpy(verification->error_description, "Difficulty does not match current difficulty on server");
         write_msg(fd, &wrapper);
         return;
@@ -255,13 +257,13 @@ void handle_solution(int fd, struct msg_solution *solution)
     LOG("[SOLUTION by %s %s!]\n", solution->username, verification->ok ? "ACCEPTED" : "REJECTED");
 
     if (verification->ok) {
-        // Update the user's heartbeat timestamp so they can request a new task
+        // Update the user's request timestamp so they can request a new task
         // immediately after receiving the notification
-        u->heartbeat_timestamp = 0;
+        u->request_timestamp = 0;
 
         task_log_add(solution);
         generate_new_task();
-        LOG("Generated new block: %s\n", current_block);
+        LOG("Generated new block: %s\n", current_task->block);
     }
     
     pthread_mutex_unlock(&lock); // unlock after verification
@@ -286,7 +288,7 @@ void *client_thread(void* client_fd) {
        }
        if (difftime(time(NULL), task_start_time) > 24 * 60 * 60) {
             generate_new_task();
-            LOG("Task unsolved for 24 hours. Generated new block: %s\n", current_block);
+            LOG("Task unsolved for 24 hours. Generated new block: %s\n", current_task->block);
         }
 
         switch (msg.header.msg_type) {
@@ -376,6 +378,7 @@ int main(int argc, char *argv[]) {
     
    
     task_init(opts.adj_file, opts.animal_file);
+    current_task_wrapper = create_msg(MSG_TASK);
     generate_new_task();
     task_log_open(opts.log_file);
 
