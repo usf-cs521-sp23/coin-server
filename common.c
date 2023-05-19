@@ -70,6 +70,7 @@ size_t msg_size(enum MSG_TYPES type)
             case MSG_SOLUTION: return sizeof(struct msg_solution);
             case MSG_VERIFICATION: return sizeof(struct msg_verification);
             case MSG_HEARTBEAT: return sizeof(struct msg_heartbeat);
+            case MSG_HEARTBEAT_REPLY: return sizeof(struct msg_heartbeat_reply);
             case MSG_GOODBYE: return sizeof(struct msg_goodbye);
             default: assert(false && "Message size not known!");
         }
