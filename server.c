@@ -338,6 +338,7 @@ void *client_thread(void* client_fd) {
             case MSG_HEARTBEAT: handle_heartbeat(fd, (struct msg_heartbeat *) &msg.heartbeat);
                                 break;
             case MSG_GOODBYE: handle_goodbye(fd, (struct msg_goodbye *) &msg.goodbye);
+                                break;
             default:
                 LOG("ERROR: unknown message type: %d\n", msg.header.msg_type);
         }
